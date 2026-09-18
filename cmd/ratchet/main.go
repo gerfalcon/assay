@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/sherzing/ratchet/internal/analyze"
 	"github.com/sherzing/ratchet/internal/baseline"
@@ -303,59 +305,109 @@ func cmdHistory(args []string) error {
 	fs := flag.NewFlagSet("history", flag.ExitOnError)
 	var c commonFlags
 	bindCommon(fs, &c)
-	since := fs.String("since", "6 months ago", "git --since value")
-	interval := fs.String("interval", "1 week", "sampling interval: 1 week|1 day|1 month")
-	maxN := fs.Int("max", 60, "maximum samples")
+	since := fs.String("since", "", "git --since value (empty = from the first commit)")
+	interval := fs.String("interval", "1 week", "sampling interval: all|1 day|1 week|1 month")
+	maxN := fs.Int("max", 0, "maximum samples (0 = unlimited)")
+	firstParent := fs.Bool("first-parent", true,
+		"follow only the merge timeline. Feature-branch intermediate commits are work in progress, not states the codebase was ever really in")
+	jobs := fs.Int("jobs", 4, "parallel workers. Checkout dominates the cost, so this scales well")
 	root := parseArgs(fs, args)
 	c.detail = false // only the summary is kept for a series
 
-	commits, err := sampleCommits(root, *since, *interval, *maxN)
+	commits, err := sampleCommits(root, *since, *interval, *maxN, *firstParent)
 	if err != nil {
 		return err
 	}
 	if len(commits) == 0 {
 		return fmt.Errorf("no commits found in range")
 	}
-	fmt.Fprintf(os.Stderr, "sampling %d commits\n", len(commits))
+	fmt.Fprintf(os.Stderr, "sampling %d commits with %d workers\n", len(commits), *jobs)
+
+	// Each worker gets its own temp checkout. Results are collected then
+	// emitted in commit order, because a series that arrives out of order is
+	// useless for a trend and callers should not have to sort it.
+	type slot struct {
+		rep *model.Report
+		err error
+	}
+	out := make([]slot, len(commits))
+	opts := c.options()
+
+	sem := make(chan struct{}, max(1, *jobs))
+	var wg sync.WaitGroup
+	var done int64
+
+	for i, sha := range commits {
+		wg.Add(1)
+		go func(i int, sha string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			dir, err := os.MkdirTemp("", "ratchet-*")
+			if err != nil {
+				out[i] = slot{err: err}
+				return
+			}
+			defer os.RemoveAll(dir)
+
+			if err := gitArchive(root, sha, dir); err != nil {
+				out[i] = slot{err: err}
+				return
+			}
+			rep, err := analyze.Scan(dir, opts)
+			if err != nil {
+				out[i] = slot{err: err}
+				return
+			}
+			rep.Commit = sha
+			rep.Root = ""
+			out[i] = slot{rep: rep}
+
+			if n := atomic.AddInt64(&done, 1); n%25 == 0 || int(n) == len(commits) {
+				fmt.Fprintf(os.Stderr, "  %d/%d\n", n, len(commits))
+			}
+		}(i, sha)
+	}
+	wg.Wait()
 
 	enc := json.NewEncoder(os.Stdout)
-	for i, sha := range commits {
-		dir, err := os.MkdirTemp("", "ratchet-*")
-		if err != nil {
-			return err
-		}
-		if err := gitArchive(root, sha, dir); err != nil {
-			os.RemoveAll(dir)
-			fmt.Fprintf(os.Stderr, "  %s: skipped (%v)\n", sha[:8], err)
+	skipped := 0
+	for i, s := range out {
+		if s.rep == nil {
+			skipped++
+			fmt.Fprintf(os.Stderr, "  skipped %s: %v\n", commits[i][:8], s.err)
 			continue
 		}
-		rep, err := analyze.Scan(dir, c.options())
-		os.RemoveAll(dir)
-		if err != nil {
-			continue
-		}
-		rep.Commit = sha
-		rep.Root = ""
-		if err := enc.Encode(rep); err != nil {
+		if err := enc.Encode(s.rep); err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "  [%d/%d] %s funcs=%d cogMax=%d findings=%d\n",
-			i+1, len(commits), sha[:8], rep.Summary.Funcs,
-			rep.Summary.Cognitive.Max, rep.Summary.FindingsTotal)
 	}
+	// Silent truncation reads as "covered everything" when it did not.
+	fmt.Fprintf(os.Stderr, "emitted %d records, skipped %d\n", len(commits)-skipped, skipped)
 	return nil
 }
 
-// sampleCommits picks one commit per interval. git's own --since/--until
-// bucketing is awkward here, so we take the first-parent log and thin it by date.
-func sampleCommits(root, since, interval string, max int) ([]string, error) {
-	out, err := gitOut(root, "log", "--first-parent", "--since="+since,
-		"--date=format:%Y-%m-%d", "--pretty=format:%H %ad")
+// sampleCommits picks commits to measure. interval "all" takes every commit;
+// otherwise one per bucket. git's own --since/--until bucketing is awkward here,
+// so we take the log and thin it by date ourselves.
+func sampleCommits(root, since, interval string, maxN int, firstParent bool) ([]string, error) {
+	logArgs := []string{"log"}
+	if firstParent {
+		logArgs = append(logArgs, "--first-parent")
+	}
+	if since != "" {
+		logArgs = append(logArgs, "--since="+since)
+	}
+	logArgs = append(logArgs, "--date=format:%Y-%m-%d", "--pretty=format:%H %ad")
+	out, err := gitOut(root, logArgs...)
 	if err != nil {
 		return nil, err
 	}
-	bucket := func(date string) string {
+	bucket := func(date string, idx int) string {
 		switch interval {
+		case "all":
+			return fmt.Sprint(idx) // unique per commit: nothing is thinned
 		case "1 day":
 			return date
 		case "1 month":
@@ -366,18 +418,18 @@ func sampleCommits(root, since, interval string, max int) ([]string, error) {
 	}
 	seen := map[string]bool{}
 	var picked []string
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for idx, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) < 2 {
 			continue
 		}
-		b := bucket(parts[1])
+		b := bucket(parts[1], idx)
 		if seen[b] {
 			continue
 		}
 		seen[b] = true
 		picked = append(picked, parts[0])
-		if len(picked) >= max {
+		if maxN > 0 && len(picked) >= maxN {
 			break
 		}
 	}
