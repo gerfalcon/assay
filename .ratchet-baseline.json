@@ -1,0 +1,25 @@
+{
+  "version": "1",
+  "tolerated": {
+    "0d6849c9078cd133": {
+      "rule": "error-swallowed",
+      "file": "internal/analyze/analyze.go",
+      "func": "Scan"
+    },
+    "58f96c7558556478": {
+      "rule": "error-swallowed",
+      "file": "internal/analyze/analyze.go",
+      "func": "Scan"
+    },
+    "b34bd85577ec24db": {
+      "rule": "error-swallowed",
+      "file": "internal/analyze/analyze.go",
+      "func": "Scan"
+    }
+  },
+  "caps": {
+    "maxCyclomatic": 25,
+    "maxCognitive": 52,
+    "maxNesting": 4
+  }
+}
