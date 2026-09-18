@@ -77,6 +77,7 @@ run "ratchet <command> -h" for flags
 type commonFlags struct {
 	format        string
 	rules         string
+	skipDirs      string
 	includeTests  bool
 	includeVendor bool
 	detail        bool
@@ -86,6 +87,7 @@ type commonFlags struct {
 func bindCommon(fs *flag.FlagSet, c *commonFlags) {
 	fs.StringVar(&c.format, "format", "text", "output: text|json|csv|sarif")
 	fs.StringVar(&c.rules, "rules", "", "comma-separated rule IDs to enable (default: all)")
+	fs.StringVar(&c.skipDirs, "skip-dirs", "", "comma-separated extra directory names to skip")
 	fs.BoolVar(&c.includeTests, "include-tests", false, "analyse _test.go files")
 	fs.BoolVar(&c.includeVendor, "include-vendor", false, "analyse vendor/")
 	fs.BoolVar(&c.detail, "detail", true, "include per-function records")
@@ -104,16 +106,40 @@ func (c commonFlags) options() analyze.Options {
 			opt.Enabled[strings.TrimSpace(r)] = true
 		}
 	}
+	for _, d := range strings.Split(c.skipDirs, ",") {
+		if d = strings.TrimSpace(d); d != "" {
+			opt.SkipDirs = append(opt.SkipDirs, d)
+		}
+	}
 	return opt
 }
 
-func target(args []string) string {
-	if len(args) == 0 {
+// parseArgs parses flags that appear before OR after the path argument.
+//
+// Go's flag package stops parsing at the first non-flag argument, so
+// `ratchet scan . --format json` silently ignores --format and emits text.
+// Everyone types the path first, so accepting only the other order is a trap —
+// and one this tool's own README fell into. We loop: parse, pull off the
+// positional the parser stopped on, parse the remainder, repeat.
+func parseArgs(fs *flag.FlagSet, args []string) string {
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return "."
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			break
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
+	if len(positional) == 0 {
 		return "."
 	}
 	// Accept the ./... idiom people type by reflex, but we walk the tree
 	// ourselves rather than resolving package patterns.
-	return strings.TrimSuffix(strings.TrimSuffix(args[0], "..."), "/")
+	return strings.TrimSuffix(strings.TrimSuffix(positional[0], "..."), "/")
 }
 
 func cmdScan(args []string) error {
@@ -121,9 +147,7 @@ func cmdScan(args []string) error {
 	var c commonFlags
 	bindCommon(fs, &c)
 	failOn := fs.String("fail-on", "", "exit non-zero if any finding at or above this severity: error|warn|info")
-	fs.Parse(args)
-
-	root := target(fs.Args())
+	root := parseArgs(fs, args)
 	rep, err := analyze.Scan(root, c.options())
 	if err != nil {
 		return err
@@ -178,9 +202,7 @@ func cmdBaseline(args []string) error {
 	file := fs.String("file", defaultBaselineFile, "baseline path")
 	force := fs.Bool("force", false, "overwrite an existing baseline")
 	tighten := fs.Bool("tighten", false, "drop entries that no longer reproduce, keep the rest")
-	fs.Parse(args)
-
-	root := target(fs.Args())
+	root := parseArgs(fs, args)
 	rep, err := analyze.Scan(root, c.options())
 	if err != nil {
 		return err
@@ -230,9 +252,7 @@ func cmdCheck(args []string) error {
 	file := fs.String("file", defaultBaselineFile, "baseline path")
 	strictCaps := fs.Bool("strict-caps", false, "also fail if max complexity exceeds the baseline")
 	asJSON := fs.Bool("json", false, "emit the result as JSON")
-	fs.Parse(args)
-
-	root := target(fs.Args())
+	root := parseArgs(fs, args)
 	path := *file
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
@@ -286,9 +306,7 @@ func cmdHistory(args []string) error {
 	since := fs.String("since", "6 months ago", "git --since value")
 	interval := fs.String("interval", "1 week", "sampling interval: 1 week|1 day|1 month")
 	maxN := fs.Int("max", 60, "maximum samples")
-	fs.Parse(args)
-
-	root := target(fs.Args())
+	root := parseArgs(fs, args)
 	c.detail = false // only the summary is kept for a series
 
 	commits, err := sampleCommits(root, *since, *interval, *maxN)

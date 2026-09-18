@@ -93,7 +93,9 @@ func TestAnyInExportedSignature(t *testing.T) {
 		{"unexported is fine", `func do(x any) {}`, 0},
 		{"concrete is fine", `func Do(x string) {}`, 0},
 		{"non-empty interface is fine", `func Do(x interface{ Read() }) {}`, 0},
-		{"variadic any", `func Do(xs ...any) {}`, 1},
+		// Variadic ...any is the fmt/sql/logging pass-through idiom. Real code
+		// (pgx wrappers in service-b) proved flagging it is pure noise.
+		{"variadic any is idiomatic", `func Do(xs ...any) {}`, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,5 +184,37 @@ func TestRuleRegistryCoversEmittedRules(t *testing.T) {
 		if _, ok := Rules[f.Rule]; !ok {
 			t.Errorf("rule %q emitted but missing from the Rules registry", f.Rule)
 		}
+	}
+}
+
+// The must* convention announces an intentional panic. regexp.MustCompile and
+// template.Must are stdlib; flagging the idiom would flag Go itself.
+func TestPanicExemptInMustFunctions(t *testing.T) {
+	if got := countRule(findingsFor(t, `func mustMarshal(v any) []byte { panic("x") }`), RulePanicInLib); got != 0 {
+		t.Errorf("must* function flagged for panic: got %d, want 0", got)
+	}
+	if got := countRule(findingsFor(t, `func MustParse(s string) int { panic("x") }`), RulePanicInLib); got != 0 {
+		t.Errorf("Must* function flagged for panic: got %d, want 0", got)
+	}
+	if got := countRule(findingsFor(t, `func parse(s string) int { panic("x") }`), RulePanicInLib); got != 1 {
+		t.Errorf("ordinary function not flagged for panic: got %d, want 1", got)
+	}
+}
+
+// A codebase that already runs golangci-lint has an established way to say
+// "I know". A tool that cannot be told no gets switched off.
+func TestNolintSuppresses(t *testing.T) {
+	src := `func f(x any) {
+	s := x.(string) //nolint:forcetypeassert // checked upstream
+	_ = s
+}`
+	if got := countRule(findingsFor(t, src), RuleNakedAssert); got != 0 {
+		t.Errorf("nolint on the same line did not suppress: got %d, want 0", got)
+	}
+	if got := countRule(findingsFor(t, `func f(x any) {
+	s := x.(string)
+	_ = s
+}`), RuleNakedAssert); got != 1 {
+		t.Errorf("control case without nolint should fire: got %d, want 1", got)
 	}
 }

@@ -91,7 +91,17 @@ a thousand tidy ones barely moves an average.
 | `else-after-return` | info | nesting for no reason |
 
 Every rule is individually toggleable via `--rules`. A rule you cannot switch off
-is a rule that gets the whole tool switched off.
+is a rule that gets the whole tool switched off. For the same reason ratchet
+honours `//nolint` directives — a codebase already running golangci-lint has an
+established way to say "I know, and I meant it".
+
+Two exemptions were added after running against a real service (`service-b`),
+because both produced pure noise:
+
+- **variadic `...any` is not flagged** — it is the pass-through idiom behind
+  `fmt.Printf`, SQL driver args and structured logging
+- **`panic` inside `must*`/`Must*` is not flagged** — the prefix is the Go
+  convention announcing an intentional panic, as in `regexp.MustCompile`
 
 ## Design decisions worth knowing
 

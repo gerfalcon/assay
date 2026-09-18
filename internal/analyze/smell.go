@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strings"
 
 	"github.com/sherzing/ratchet/internal/model"
 )
@@ -50,7 +51,9 @@ type smellPass struct {
 	// safeAsserts holds positions of type assertions already guarded by the
 	// comma-ok form or a type switch, so the naked-assertion rule can skip them.
 	safeAsserts map[token.Pos]bool
-	fnStack     []string
+	// nolint holds lines the author has explicitly excused.
+	nolint  map[int]bool
+	fnStack []string
 }
 
 func (p *smellPass) on(rule string) bool { return p.enabled == nil || p.enabled[rule] }
@@ -73,11 +76,38 @@ func (p *smellPass) snippet(n ast.Node) string {
 	return string(p.src[s:e])
 }
 
+// collectNolint records lines carrying a //nolint directive.
+//
+// This codebase (and most Go codebases) already runs golangci-lint, so
+// //nolint is the established way people say "I know, and I meant it". Ignoring
+// it would make ratchet the one tool that cannot be told no — which is the
+// fastest route to being switched off entirely.
+//
+// Approximation: a directive suppresses its own line and the line after it,
+// covering both the trailing-comment and comment-above-the-declaration forms.
+// Full golangci-lint semantics scope to the whole following block; we do not.
+func (p *smellPass) collectNolint() {
+	p.nolint = map[int]bool{}
+	for _, cg := range p.file.Comments {
+		for _, c := range cg.List {
+			if !strings.Contains(c.Text, "nolint") {
+				continue
+			}
+			line := p.fset.Position(c.Pos()).Line
+			p.nolint[line] = true
+			p.nolint[line+1] = true
+		}
+	}
+}
+
 func (p *smellPass) add(rule string, n ast.Node, msg, suggest string) {
 	if !p.on(rule) {
 		return
 	}
 	pos := p.fset.Position(n.Pos())
+	if p.nolint[pos.Line] {
+		return
+	}
 	fn := p.currentFunc()
 	p.findings = append(p.findings, model.Finding{
 		Rule:        rule,
@@ -123,6 +153,7 @@ func (p *smellPass) collectSafeAsserts() {
 
 func (p *smellPass) run() []model.Finding {
 	p.collectSafeAsserts()
+	p.collectNolint()
 
 	var visit func(ast.Node) bool
 	visit = func(n ast.Node) bool {
@@ -242,6 +273,12 @@ func (p *smellPass) checkPanic(c *ast.CallExpr) {
 	if !ok || id.Name != "panic" {
 		return
 	}
+	// The must* prefix is an established Go convention announcing that this
+	// function panics by design — regexp.MustCompile, template.Must. Flagging
+	// it means flagging the stdlib's own idiom.
+	if fn := p.currentFunc(); strings.HasPrefix(fn, "must") || strings.HasPrefix(fn, "Must") {
+		return
+	}
 	p.add(RulePanicInLib, c,
 		"panic() in library code takes the decision away from the caller",
 		"return an error instead")
@@ -252,6 +289,12 @@ func (p *smellPass) checkExportedAny(fd *ast.FuncDecl) {
 		return
 	}
 	report := func(f *ast.Field, where string) {
+		// Variadic ...any is the pass-through idiom: fmt.Printf, SQL driver
+		// args, structured logging. It dominates the legitimate uses, so
+		// flagging it produces noise that buries the real findings.
+		if _, variadic := f.Type.(*ast.Ellipsis); variadic {
+			return
+		}
 		if isAny(f.Type) {
 			p.add(RuleAnyExported, f,
 				fmt.Sprintf("exported %s uses any/interface{} in %s", funcName(fd), where),
