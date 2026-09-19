@@ -172,6 +172,8 @@ func cmdScan(args []string) error {
 	failOn := fs.String("fail-on", "", "exit non-zero if any finding at or above this severity: error|warn|info")
 	emit := fs.String("emit", "", "emit assay JSONL instead of a report: measures|findings")
 	repoName := fs.String("repo", "", "repo name to stamp on emitted records")
+	noVerdicts := fs.Bool("no-verdicts", false,
+		"do not emit verdict records alongside findings (they are emitted by default)")
 	root := parseArgs(fs, args)
 	opt, err := loadCfg(root, c.options())
 	if err != nil {
@@ -187,7 +189,7 @@ func cmdScan(args []string) error {
 		if name == "" {
 			name = filepath.Base(mustAbs(root))
 		}
-		if err := emitAssay(rep, *emit, name, gitCommit(root)); err != nil {
+		if err := emitAssay(rep, *emit, name, gitCommit(root), !*noVerdicts); err != nil {
 			return err
 		}
 	} else if err := emitReport(rep, c); err != nil {
@@ -211,7 +213,7 @@ func mustAbs(p string) string {
 //
 // Split into per-kind helpers after assay flagged this at cognitive 28 — second
 // worst in its own codebase, and freshly written. Dogfooding works.
-func emitAssay(rep *model.Report, kind, repo, commit string) error {
+func emitAssay(rep *model.Report, kind, repo, commit string, withVerdicts bool) error {
 	enc := schema.NewEncoder(os.Stdout)
 	defer enc.Flush()
 	now := time.Now().UTC()
@@ -220,7 +222,17 @@ func emitAssay(rep *model.Report, kind, repo, commit string) error {
 	case "measures":
 		return emitMeasures(enc, rep, repo, commit, now)
 	case "findings":
-		return emitFindings(enc, rep, repo, commit, now)
+		if err := emitFindings(enc, rep, repo, commit, now); err != nil {
+			return err
+		}
+		// Verdicts are emitted BY DEFAULT. A judgement that only lives in a
+		// comment is invisible to every other tool and never accumulates into
+		// the precision dataset — which is the whole point of recording it. If
+		// harvesting is the right thing, it should not need asking for.
+		if withVerdicts {
+			return emitVerdicts(enc, rep, repo, now)
+		}
+		return nil
 	}
 	return fmt.Errorf("unknown --emit %q (want measures|findings)", kind)
 }
@@ -290,6 +302,30 @@ func emitFindings(enc *schema.Encoder, rep *model.Report, repo, commit string, n
 			Message: f.Message, Suggest: f.Suggest, Fingerprint: f.Fingerprint,
 			Verdict: schema.Judgement(f.Verdict), VerdictWhy: f.VerdictWhy,
 			VerdictUntil: f.VerdictUntil, VerdictFrom: f.VerdictFrom,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// emitVerdicts turns resolved judgements into records the store can accumulate.
+//
+// By is deliberately left empty. The annotation's author is recoverable with git
+// blame, but running blame per finding would dominate a scan, and a wrong
+// attribution is worse than none.
+func emitVerdicts(enc *schema.Encoder, rep *model.Report, repo string, now time.Time) error {
+	for _, f := range rep.Findings {
+		if f.Verdict == "" {
+			continue // unjudged is not a verdict; it is the absence of one
+		}
+		if err := enc.Write(&schema.Verdict{
+			Fingerprint: f.Fingerprint,
+			Rule:        f.Rule,
+			Repo:        repo,
+			Verdict:     schema.Judgement(f.Verdict),
+			Reason:      f.VerdictWhy,
+			TS:          now,
 		}); err != nil {
 			return err
 		}

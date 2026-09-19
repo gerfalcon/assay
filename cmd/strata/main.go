@@ -43,6 +43,8 @@ func main() {
 		err = cmdVerdicts(os.Args[2:])
 	case "stat":
 		err = cmdStat(os.Args[2:])
+	case "precision":
+		err = cmdPrecision(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("strata", version)
 	case "help", "-h", "--help":
@@ -67,6 +69,7 @@ usage:
   strata rollup   [--period day|week|month] [same filters]
   strata verdicts [--store DIR] [--rule R]
   strata stat     [--store DIR]
+  strata precision [--store DIR] [--rule R] [--min-judged N]
 
 dates are YYYY-MM-DD. default store is .assay
 everything reads and writes JSONL, so it composes:
@@ -348,4 +351,81 @@ func trunc(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
+}
+
+// cmdPrecision reports what the evidence says about each rule.
+//
+// This is the number that decides whether a rule deserves to ship. A rule that
+// cannot show its true-positive rate across real repositories has not earned a
+// place in anyone's CI, and no vendor publishes this because it needs many
+// codebases and many independent judgements.
+func cmdPrecision(args []string) error {
+	fs := flag.NewFlagSet("precision", flag.ExitOnError)
+	dir := storeFlag(fs)
+	rule := fs.String("rule", "", "filter to one rule")
+	minJudged := fs.Int("min-judged", 1, "hide rules with fewer judged findings")
+	asJSON := fs.Bool("json", false, "emit JSON")
+	fs.Parse(args)
+
+	s, err := store.Open(*dir)
+	if err != nil {
+		return err
+	}
+	rows, err := s.Precision()
+	if err != nil {
+		return err
+	}
+	var keep []store.RulePrecision
+	for _, r := range rows {
+		if *rule != "" && r.Rule != *rule {
+			continue
+		}
+		if r.Judged < *minJudged {
+			continue
+		}
+		keep = append(keep, r)
+	}
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(keep)
+	}
+	if len(keep) == 0 {
+		fmt.Println("no rules with enough judged findings yet")
+		fmt.Println("evidence accrues as findings are fixed or annotated — come back after some work lands")
+		return nil
+	}
+
+	fmt.Printf("%-30s %6s %8s %5s %7s %6s %6s %5s\n",
+		"rule", "prec", "carriage", "fixed", "carried", "fp", "unjud", "repos")
+	fmt.Println(strings.Repeat("─", 84))
+	for _, r := range keep {
+		prec := "  –   "
+		if r.Judged > 0 {
+			prec = fmt.Sprintf("%6.2f", r.Precision)
+		}
+		carr := "   –    "
+		if r.Fixed+r.Carried > 0 {
+			carr = fmt.Sprintf("%7.0f%%", r.Carriage*100)
+		}
+		fmt.Printf("%-30s %s %s %5d %7d %6d %6d %5d\n",
+			trunc(r.Rule, 30), prec, carr, r.Fixed, r.Carried, r.FalsePositive, r.Unjudged, r.Repos)
+	}
+
+	fmt.Println()
+	for _, r := range keep {
+		switch {
+		case r.Judged >= 5 && r.Precision < 0.5:
+			fmt.Printf("  %s — precision %.2f over %d judged. Mostly wrong; fix the rule or drop it.\n",
+				r.Rule, r.Precision, r.Judged)
+		case r.Fixed+r.Carried >= 5 && r.Carriage > 0.8:
+			fmt.Printf("  %s — %.0f%% of confirmed findings are carried, not fixed. The rule is right\n"+
+				"      and the problem may be one the ecosystem has given up on. Consider shipping it\n"+
+				"      as informational rather than as a gate.\n", r.Rule, r.Carriage*100)
+		case r.Coverage < 0.1 && r.Seen >= 20:
+			fmt.Printf("  %s — only %.0f%% of %d findings judged. Too little evidence to trust the number.\n",
+				r.Rule, r.Coverage*100, r.Seen)
+		}
+	}
+	return nil
 }
