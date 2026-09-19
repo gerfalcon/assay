@@ -196,3 +196,30 @@ A rule PR needs: the rule, evidence for it, and one maintainer who has run it
 against a codebase they did not write. That last requirement exists because it is
 the only check that reliably catches a rule that is technically correct and
 practically useless.
+
+Maintainers work from [MAINTAINING.md](MAINTAINING.md), which also documents how
+rules get **demoted**. A rule that was right in 2026 and wrong in 2028 is not a
+failure — it did its job and the ecosystem changed. Rules losing their place is
+what stops the corpus becoming another catalogue nobody reads.
+
+## Finding candidates in the first place
+
+If you have codebases you already trust, let them tell you what to propose:
+
+```sh
+ratchet learn repo-a repo-b --emit
+```
+
+```
+no-context-todo             0.07    0.00   held — ship it
+prefer-any-over-interface  21.13    0.07   divergent — org rule
+no-naked-return             3.77    4.48   NOT held — reject
+```
+
+**The rejections are the valuable part.** `no-naked-return` is on every Go style
+list and both codebases use it several times per thousand lines — shipping it
+would have produced thousands of findings nobody agrees are defects.
+
+`--emit` prints draft rules with the evidence already filled in. They are drafts:
+the method finds *conventions*, not defects, and a codebase can consistently do
+something bad.

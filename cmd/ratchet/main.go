@@ -22,6 +22,7 @@ import (
 
 	"github.com/sherzing/assay/internal/analyze"
 	"github.com/sherzing/assay/internal/baseline"
+	"github.com/sherzing/assay/internal/learn"
 	"github.com/sherzing/assay/internal/model"
 	"github.com/sherzing/assay/internal/report"
 	"github.com/sherzing/assay/internal/sarif"
@@ -54,6 +55,8 @@ func main() {
 		cmdRules()
 	case "exceptions":
 		err = cmdExceptions(os.Args[2:])
+	case "learn":
+		err = cmdLearn(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("ratchet", version)
 	case "help", "-h", "--help":
@@ -79,6 +82,7 @@ usage:
   ratchet history  [flags] [path]   metric series over git history
   ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
   ratchet exceptions [path]         everything currently tolerated, and why
+  ratchet learn <repo>...           derive candidate rules from codebases you trust
   ratchet rules                     list rules
   ratchet version
 
@@ -931,4 +935,106 @@ func truncTail(s string, n int) string {
 		return s
 	}
 	return "…" + s[len(s)-n+1:]
+}
+
+// cmdLearn probes codebases you already trust and reports which conventions
+// they hold.
+//
+// The rejections matter as much as the acceptances: a pattern both codebases use
+// constantly is evidence NOT to ship that rule, whatever the style guides say.
+// parseArgsMulti is parseArgs for commands taking several positionals. Go's
+// flag package stops at the first non-flag argument, so `learn a b --emit`
+// would otherwise treat --emit as a third repository.
+func parseArgsMulti(fs *flag.FlagSet, args []string) []string {
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return positional
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			return positional
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
+}
+
+func cmdLearn(args []string) error {
+	fs := flag.NewFlagSet("learn", flag.ExitOnError)
+	emit := fs.Bool("emit", false, "print draft semgrep rules for the held candidates")
+	heldBelow := fs.Float64("held-below", 0.15, "per-kLOC rate under which a pattern counts as avoided")
+	repos := parseArgsMulti(fs, args)
+	if len(repos) == 0 {
+		return fmt.Errorf("usage: ratchet learn <repo> [repo...]\n" +
+			"  two or more codebases you have independent reason to trust.\n" +
+			"  one repo can only tell you what that repo does, not what is worth enforcing")
+	}
+	if len(repos) == 1 {
+		fmt.Fprintln(os.Stderr,
+			"warning: one repository cannot distinguish a shared convention from local habit.\n"+
+				"         treat everything below as weaker than it looks.")
+	}
+
+	t := learn.DefaultThresholds()
+	t.HeldBelow = *heldBelow
+	results, err := learn.Probe(repos, learn.Catalogue(), t)
+	if err != nil {
+		return err
+	}
+
+	names := make([]string, 0, len(results[0].Rates))
+	for k := range results[0].Rates {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+
+	fmt.Printf("%-28s", "candidate")
+	for _, n := range names {
+		fmt.Printf("%12s", truncTail(n, 11))
+	}
+	fmt.Printf("  verdict\n")
+	fmt.Println(strings.Repeat("─", 28+12*len(names)+22))
+
+	var held, notHeld, divergent int
+	for _, r := range results {
+		fmt.Printf("%-28s", truncHead(r.Candidate.ID, 27))
+		for _, n := range names {
+			fmt.Printf("%12.2f", r.Rates[n])
+		}
+		switch r.Verdict {
+		case learn.Held:
+			held++
+			fmt.Printf("  held — ship it\n")
+		case learn.Divergent:
+			divergent++
+			fmt.Printf("  divergent — org rule\n")
+		default:
+			notHeld++
+			fmt.Printf("  NOT held — reject\n")
+		}
+	}
+
+	fmt.Printf("\n%d held, %d divergent, %d not held\n\n", held, divergent, notHeld)
+	fmt.Printf("held      these codebases avoid it. Candidate for a rule.\n")
+	fmt.Printf("divergent one avoids it, another does not — taste, age or local context.\n")
+	fmt.Printf("          An org rule at most, never core.\n")
+	fmt.Printf("NOT held  they do it routinely. Shipping this would generate noise at scale,\n")
+	fmt.Printf("          however many style guides recommend it.\n")
+
+	fmt.Printf("\nThis finds CONVENTIONS, not defects. A codebase can consistently do\n")
+	fmt.Printf("something bad. Run each held candidate against real code and read every\n")
+	fmt.Printf("finding before enabling it — three of this tool's own five original rules\n")
+	fmt.Printf("passed statistical tests and were still noise on contact with production.\n")
+
+	if *emit {
+		fmt.Printf("\n%s\n", strings.Repeat("─", 60))
+		for _, r := range results {
+			if r.Verdict != learn.Held {
+				continue
+			}
+			fmt.Printf("\n# rules/local/%s.yaml\n%s", r.Candidate.ID, learn.DraftRule(r))
+		}
+	}
+	return nil
 }
