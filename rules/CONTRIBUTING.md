@@ -46,6 +46,32 @@ even when fixing it is not an option. Say so in the metadata.
 
 ---
 
+## Attributing evidence to an organisation
+
+The ≥2-organisations bar is what stops a rule being promoted on one team's house
+style, so the attribution has to be right. Three sources, most reliable first:
+
+```sh
+ratchet scan . --org acme              # explicit, wins over everything
+```
+```yaml
+# .quality.yaml — set once per repo instead of on every invocation
+org: acme
+```
+```
+# last resort: inferred from the committer's email domain
+```
+
+**The inference declines to guess.** A consumer mail provider — gmail, outlook,
+proton, iCloud, a GitHub noreply address — yields *nothing* rather than an
+organisation called "gmail". No attribution is an honest answer; a wrong one
+quietly inflates the count that gates promotion.
+
+When an org is inferred rather than stated, `ratchet` says so on stderr. Evidence
+gets tagged with it, and discovering after publication that your work was
+attributed to whatever sat in your global git config is a surprise nobody wants.
+`--org=-` opts out of attribution entirely.
+
 ## Submitting precision data without submitting code
 
 **This is the part that makes the model work for closed-source teams.** You can

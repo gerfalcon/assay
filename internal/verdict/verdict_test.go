@@ -167,3 +167,48 @@ func TestValidateCatchesBadInput(t *testing.T) {
 		t.Errorf("got %d errors, want 3 (bad verdict, no selector, bad date)", got)
 	}
 }
+
+// Inferring "gmail" as an organisation would corrupt the one criterion that
+// stops a rule being promoted on a single team's house style.
+func TestOrgFromEmailDeclinesToGuess(t *testing.T) {
+	for _, e := range []string{
+		"sven@gmail.com", "x@outlook.com", "y@proton.me", "z@icloud.com",
+		"8349202+sherzing@users.noreply.github.com",
+		"not-an-email", "", "@nodomain", "trailing@",
+	} {
+		if got := OrgFromEmail(e); got != "" {
+			t.Errorf("OrgFromEmail(%q) = %q, want empty — a wrong org is worse than none", e, got)
+		}
+	}
+}
+
+func TestOrgFromEmailFindsRealOrgs(t *testing.T) {
+	cases := map[string]string{
+		"sven@acme.com":           "acme",
+		"a.b@engineering.acme.io": "acme",
+		"x@acme.co.uk":            "acme",
+		"y@acme.com.au":           "acme",
+		"Z@ACME.COM":              "acme",
+	}
+	for email, want := range cases {
+		if got := OrgFromEmail(email); got != want {
+			t.Errorf("OrgFromEmail(%q) = %q, want %q", email, got, want)
+		}
+	}
+}
+
+// Explicit always wins: someone typing --org knows more than a domain heuristic.
+func TestResolveOrgPrecedence(t *testing.T) {
+	cases := []struct{ flag, cfg, email, want string }{
+		{"flagorg", "cfgorg", "x@acme.com", "flagorg"},
+		{"", "cfgorg", "x@acme.com", "cfgorg"},
+		{"", "", "x@acme.com", "acme"},
+		{"", "", "x@gmail.com", ""},
+		{"", "", "", ""},
+	}
+	for _, c := range cases {
+		if got := ResolveOrg(c.flag, c.cfg, c.email); got != c.want {
+			t.Errorf("ResolveOrg(%q,%q,%q) = %q, want %q", c.flag, c.cfg, c.email, got, c.want)
+		}
+	}
+}

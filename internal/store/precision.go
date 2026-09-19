@@ -35,6 +35,10 @@ type RulePrecision struct {
 	Precision     float64 `json:"precision"`
 	Coverage      float64 `json:"coverage"`
 	Repos         int     `json:"repos"`
+	// Orgs is the count of distinct organisations that contributed evidence.
+	// The promotion bar requires >= 2, because a rule confirmed only inside one
+	// company is that company's house style, not a shared defect.
+	Orgs int `json:"orgs"`
 	// Carriage is the share of confirmed findings nobody is fixing. High
 	// carriage with high precision is the "known ecosystem problem" signature:
 	// the rule is right, and the industry has given up on the underlying issue.
@@ -57,13 +61,13 @@ func (s *Store) Precision() ([]RulePrecision, error) {
 
 	type acc struct {
 		fixed, carried, fp, unjudged int
-		repos                        map[string]bool
+		repos, orgs                  map[string]bool
 	}
 	byRule := map[string]*acc{}
 	get := func(rule string) *acc {
 		a, ok := byRule[rule]
 		if !ok {
-			a = &acc{repos: map[string]bool{}}
+			a = &acc{repos: map[string]bool{}, orgs: map[string]bool{}}
 			byRule[rule] = a
 		}
 		return a
@@ -80,6 +84,9 @@ func (s *Store) Precision() ([]RulePrecision, error) {
 		a := get(rule)
 		if info.repo != "" {
 			a.repos[info.repo] = true
+		}
+		if v, ok := verdicts[fp]; ok && v.Org != "" {
+			a.orgs[v.Org] = true
 		}
 
 		if v, ok := verdicts[fp]; ok {
@@ -110,6 +117,7 @@ func (s *Store) Precision() ([]RulePrecision, error) {
 			Judged: confirmed + a.fp,
 			Seen:   confirmed + a.fp + a.unjudged,
 			Repos:  len(a.repos),
+			Orgs:   len(a.orgs),
 		}
 		if r.Judged > 0 {
 			r.Precision = float64(confirmed) / float64(r.Judged)
@@ -132,7 +140,7 @@ func (s *Store) Precision() ([]RulePrecision, error) {
 }
 
 type findingInfo struct {
-	rule, repo string
+	rule, repo  string
 	first, last time.Time
 }
 
@@ -144,8 +152,8 @@ type findingInfo struct {
 // fixed everything.
 func (s *Store) findingHistory() (map[string]findingInfo, map[string]bool, error) {
 	seen := map[string]findingInfo{}
-	lastScan := map[string]time.Time{}   // repo -> most recent finding timestamp
-	byRepoTS := map[string][]string{}    // repo|ts -> fingerprints
+	lastScan := map[string]time.Time{} // repo -> most recent finding timestamp
+	byRepoTS := map[string][]string{}  // repo|ts -> fingerprints
 
 	err := s.walkDays("findings", time.Time{}, time.Time{}, func(path string) error {
 		f, err := os.Open(path)

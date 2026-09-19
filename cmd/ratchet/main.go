@@ -25,6 +25,7 @@ import (
 	"github.com/sherzing/assay/internal/model"
 	"github.com/sherzing/assay/internal/report"
 	"github.com/sherzing/assay/internal/sarif"
+	"github.com/sherzing/assay/internal/verdict"
 	"github.com/sherzing/assay/pkg/schema"
 )
 
@@ -174,6 +175,8 @@ func cmdScan(args []string) error {
 	repoName := fs.String("repo", "", "repo name to stamp on emitted records")
 	noVerdicts := fs.Bool("no-verdicts", false,
 		"do not emit verdict records alongside findings (they are emitted by default)")
+	org := fs.String("org", "",
+		"organisation to attribute evidence to (else .quality.yaml org:, else inferred from git email)")
 	root := parseArgs(fs, args)
 	opt, err := loadCfg(root, c.options())
 	if err != nil {
@@ -189,7 +192,20 @@ func cmdScan(args []string) error {
 		if name == "" {
 			name = filepath.Base(mustAbs(root))
 		}
-		if err := emitAssay(rep, *emit, name, gitCommit(root), !*noVerdicts); err != nil {
+		orgName := verdict.ResolveOrg(*org, opt.Config.Org, gitEmail(root))
+		// Say so when the org was inferred rather than stated. Evidence gets
+		// tagged with this, and silently attributing someone's work to whatever
+		// happens to be in their global git config is a surprise nobody wants
+		// to discover after publishing.
+		if orgName != "" && *org == "" && opt.Config.Org == "" {
+			fmt.Fprintf(os.Stderr,
+				"note: attributing evidence to org %q, inferred from git email. "+
+					"Use --org or set org: in .quality.yaml to be explicit, or --org=- for none.\n", orgName)
+		}
+		if *org == "-" {
+			orgName = ""
+		}
+		if err := emitAssay(rep, *emit, name, gitCommit(root), orgName, !*noVerdicts); err != nil {
 			return err
 		}
 	} else if err := emitReport(rep, c); err != nil {
@@ -213,7 +229,7 @@ func mustAbs(p string) string {
 //
 // Split into per-kind helpers after assay flagged this at cognitive 28 — second
 // worst in its own codebase, and freshly written. Dogfooding works.
-func emitAssay(rep *model.Report, kind, repo, commit string, withVerdicts bool) error {
+func emitAssay(rep *model.Report, kind, repo, commit, org string, withVerdicts bool) error {
 	enc := schema.NewEncoder(os.Stdout)
 	defer enc.Flush()
 	now := time.Now().UTC()
@@ -230,7 +246,7 @@ func emitAssay(rep *model.Report, kind, repo, commit string, withVerdicts bool) 
 		// the precision dataset — which is the whole point of recording it. If
 		// harvesting is the right thing, it should not need asking for.
 		if withVerdicts {
-			return emitVerdicts(enc, rep, repo, now)
+			return emitVerdicts(enc, rep, repo, org, now)
 		}
 		return nil
 	}
@@ -314,7 +330,7 @@ func emitFindings(enc *schema.Encoder, rep *model.Report, repo, commit string, n
 // By is deliberately left empty. The annotation's author is recoverable with git
 // blame, but running blame per finding would dominate a scan, and a wrong
 // attribution is worse than none.
-func emitVerdicts(enc *schema.Encoder, rep *model.Report, repo string, now time.Time) error {
+func emitVerdicts(enc *schema.Encoder, rep *model.Report, repo, org string, now time.Time) error {
 	for _, f := range rep.Findings {
 		if f.Verdict == "" {
 			continue // unjudged is not a verdict; it is the absence of one
@@ -323,6 +339,7 @@ func emitVerdicts(enc *schema.Encoder, rep *model.Report, repo string, now time.
 			Fingerprint: f.Fingerprint,
 			Rule:        f.Rule,
 			Repo:        repo,
+			Org:         org,
 			Verdict:     schema.Judgement(f.Verdict),
 			Reason:      f.VerdictWhy,
 			TS:          now,
@@ -675,6 +692,16 @@ func gitOut(root string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 	b, err := cmd.Output()
 	return string(b), err
+}
+
+// gitEmail reads the committer identity, used only as the last-resort source
+// for org attribution.
+func gitEmail(root string) string {
+	out, err := gitOut(root, "config", "user.email")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
 }
 
 func gitCommit(root string) string {

@@ -107,7 +107,28 @@ type Rule struct {
 
 // Config is the project-level source.
 type Config struct {
+	// Org attributes this repo's evidence. Set it once per repo rather than
+	// passing --org on every invocation.
+	Org      string `yaml:"org" json:"org"`
 	Verdicts []Rule `yaml:"verdicts" json:"verdicts"`
+}
+
+// ResolveOrg picks an organisation from the available sources, most reliable
+// first: an explicit flag, then project config, then an inference from the
+// committer's email domain.
+//
+// The inference is last and it declines to guess: a consumer mail provider
+// yields nothing rather than a wrong answer, because no attribution is honest
+// and a wrong one quietly inflates the cross-organisation count that gates rule
+// promotion.
+func ResolveOrg(flag, cfg, email string) string {
+	if flag != "" {
+		return flag
+	}
+	if cfg != "" {
+		return cfg
+	}
+	return OrgFromEmail(email)
 }
 
 // Match returns the first rule that covers this finding.

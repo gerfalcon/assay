@@ -95,6 +95,9 @@ func parseMinimalYAML(data []byte) (verdict.Config, error) {
 			continue
 		}
 		if !inList {
+			if k, v, ok := strings.Cut(strings.TrimSpace(line), ":"); ok && strings.TrimSpace(k) == "org" {
+				cfg.Org = strings.Trim(strings.TrimSpace(v), `"'`)
+			}
 			continue
 		}
 		t := strings.TrimSpace(line)

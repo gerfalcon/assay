@@ -396,9 +396,9 @@ func cmdPrecision(args []string) error {
 		return nil
 	}
 
-	fmt.Printf("%-30s %6s %8s %5s %7s %6s %6s %5s\n",
-		"rule", "prec", "carriage", "fixed", "carried", "fp", "unjud", "repos")
-	fmt.Println(strings.Repeat("─", 84))
+	fmt.Printf("%-30s %6s %8s %5s %7s %6s %6s %5s %4s\n",
+		"rule", "prec", "carriage", "fixed", "carried", "fp", "unjud", "repos", "orgs")
+	fmt.Println(strings.Repeat("─", 89))
 	for _, r := range keep {
 		prec := "  –   "
 		if r.Judged > 0 {
@@ -408,8 +408,8 @@ func cmdPrecision(args []string) error {
 		if r.Fixed+r.Carried > 0 {
 			carr = fmt.Sprintf("%7.0f%%", r.Carriage*100)
 		}
-		fmt.Printf("%-30s %s %s %5d %7d %6d %6d %5d\n",
-			trunc(r.Rule, 30), prec, carr, r.Fixed, r.Carried, r.FalsePositive, r.Unjudged, r.Repos)
+		fmt.Printf("%-30s %s %s %5d %7d %6d %6d %5d %4d\n",
+			trunc(r.Rule, 30), prec, carr, r.Fixed, r.Carried, r.FalsePositive, r.Unjudged, r.Repos, r.Orgs)
 	}
 
 	fmt.Println()

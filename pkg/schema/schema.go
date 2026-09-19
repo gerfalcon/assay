@@ -122,15 +122,20 @@ type Measure struct {
 // comes free, last-write-wins needs no transactions, and "who decided this and
 // why" survives the person leaving.
 type Verdict struct {
-	V           int       `json:"v"`
-	Kind        Kind      `json:"kind"`
-	Fingerprint string    `json:"fingerprint"`
-	Rule        string    `json:"rule,omitempty"`
-	Repo        string    `json:"repo,omitempty"`
-	Verdict     Judgement `json:"verdict"`
-	Reason      string    `json:"reason,omitempty"`
-	By          string    `json:"by,omitempty"`
-	TS          time.Time `json:"ts"`
+	V           int    `json:"v"`
+	Kind        Kind   `json:"kind"`
+	Fingerprint string `json:"fingerprint"`
+	Rule        string `json:"rule,omitempty"`
+	Repo        string `json:"repo,omitempty"`
+	// Org attributes the evidence to an organisation, which is what stops a
+	// rule being promoted on one team's house style. Explicit rather than
+	// inferred, because plenty of engineers commit from gmail or a GitHub
+	// noreply address and guessing "gmail" as an org would corrupt the count.
+	Org     string    `json:"org,omitempty"`
+	Verdict Judgement `json:"verdict"`
+	Reason  string    `json:"reason,omitempty"`
+	By      string    `json:"by,omitempty"`
+	TS      time.Time `json:"ts"`
 }
 
 // Ticket links a cohort of findings to one external issue.
