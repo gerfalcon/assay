@@ -133,6 +133,7 @@ func cmdTop(args []string) error {
 	fs := flag.NewFlagSet("top", flag.ExitOnError)
 	dir, repo, metric, scope := inputFlags(fs)
 	n := fs.Int("n", 15, "how many")
+	plain := fs.Bool("plain", false, "values only, no interpretation (for scripting)")
 	fs.Parse(args)
 	if *metric == "" {
 		*metric = "cognitive"
@@ -141,11 +142,13 @@ func cmdTop(args []string) error {
 		*scope = "function"
 	}
 
-	ms, err := read(*dir, store.Query{Repo: *repo, Metric: *metric, Scope: schema.Scope(*scope)})
+	// Read every metric at this scope: the chosen one to rank by, the others to
+	// explain with.
+	ms0, err := read(*dir, store.Query{Repo: *repo, Scope: schema.Scope(*scope)})
 	if err != nil {
 		return err
 	}
-	ms = filter(ms, *repo, *metric, *scope)
+	ms := filter(ms0, *repo, *metric, *scope)
 	if len(ms) == 0 {
 		return fmt.Errorf("no %s measures at scope %s", *metric, *scope)
 	}
@@ -168,16 +171,69 @@ func cmdTop(args []string) error {
 		list = list[:*n]
 	}
 
+	// Context: a value only means something against the codebase it came from.
+	all := make([]float64, 0, len(latest))
+	for _, m := range latest {
+		all = append(all, m.Value)
+	}
+	med := median(all)
+
+	// Companion metrics let us say WHY a function is hard, which decides the fix.
+	cyc := latestBy(ms0, "cyclomatic")
+	nest := latestBy(ms0, "nesting")
+
 	maxV := list[0].Value
-	fmt.Printf("worst %d by %s (%s scope)\n\n", len(list), *metric, *scope)
+	fmt.Printf("worst %d by %s (%s scope)  ·  median is %s\n\n", len(list), *metric, *scope, num(med))
 	for _, m := range list {
 		label := m.Path
 		if *repo == "" {
 			label = m.Repo + " " + label
 		}
-		fmt.Printf("%7s %s  %s\n", num(m.Value), bar(m.Value, maxV, 22), elide(label, 68))
+		fmt.Printf("%7s %s  %s\n", num(m.Value), bar(m.Value, maxV, 22), elide(label, 66))
+		if *plain {
+			continue
+		}
+		verdict, action := classify(*metric, m.Value)
+		var notes []string
+		if verdict != "" {
+			notes = append(notes, verdict)
+		}
+		if med > 0 {
+			notes = append(notes, fmt.Sprintf("%.0fx the median", m.Value/med))
+		}
+		k := m.Repo + "\x00" + m.Path
+		if d := driver(cyc[k], nest[k]); d != "" {
+			notes = append(notes, d)
+		}
+		if len(notes) > 0 {
+			fmt.Printf("        ↳ %s\n", strings.Join(notes, " · "))
+		}
+		if action != "" {
+			fmt.Printf("        ↳ %s\n", action)
+		}
+	}
+	if !*plain {
+		fmt.Printf("\nwhat to do: start at the top. Fix one, run `ratchet baseline --tighten`,\n")
+		fmt.Printf("and the improvement is locked in so it cannot regress.\n")
 	}
 	return nil
+}
+
+// latestBy indexes the most recent value of one metric by repo+path, so top can
+// say whether branching or nesting is the real problem.
+func latestBy(ms []schema.Measure, metric string) map[string]float64 {
+	out := map[string]float64{}
+	seen := map[string]time.Time{}
+	for _, m := range ms {
+		if m.Metric != metric {
+			continue
+		}
+		k := m.Repo + "\x00" + m.Path
+		if t, ok := seen[k]; !ok || m.TS.After(t) {
+			seen[k], out[k] = m.TS, m.Value
+		}
+	}
+	return out
 }
 
 // ---------- trend ----------
@@ -186,6 +242,7 @@ func cmdTrend(args []string) error {
 	fs := flag.NewFlagSet("trend", flag.ExitOnError)
 	dir, repo, metric, scope := inputFlags(fs)
 	period := fs.String("period", "week", "day|week|month")
+	plain := fs.Bool("plain", false, "values only, no interpretation (for scripting)")
 	fs.Parse(args)
 	if *metric == "" {
 		*metric = "cognitive.p90"
@@ -223,6 +280,13 @@ func cmdTrend(args []string) error {
 			fmt.Printf("%-16s %s → %s  (%d points)\n", "",
 				pts[0].t.Format("2006-01-02"), pts[len(pts)-1].t.Format("2006-01-02"), len(pts))
 		}
+		if !*plain {
+			fmt.Printf("%-16s ↳ %s\n", "", trendVerdict(vals))
+			if v, _ := classify(*metric, last); v != "" {
+				fmt.Printf("%-16s ↳ current value is %q by the usual thresholds\n", "", v)
+			}
+		}
+		fmt.Println()
 	}
 	return nil
 }
@@ -501,4 +565,119 @@ func sortedKeys[T any](m map[string]T) []string {
 
 func sortedFloatKeys(m map[string]map[string]float64) []string {
 	return sortedKeys(m)
+}
+
+// ---------- interpretation ----------
+//
+// A number alone tells nobody what to do. These turn a value into a judgement
+// and a next action, which is the whole difference between a viewer and
+// something worth opening.
+//
+// The bands below are conventional, not laws. They are the thresholds most
+// tools and reviewers converge on, and they exist so a reader who has never
+// seen a cognitive-complexity score knows whether 27 is fine or alarming.
+
+type band struct {
+	limit  float64
+	label  string
+	action string
+}
+
+var bands = map[string][]band{
+	"cognitive": {
+		{5, "fine", ""},
+		{15, "readable", ""},
+		{25, "worth a look", "read it; if you cannot hold it in your head, split it"},
+		{1e9, "go fix this", "extract the nested branches into named functions"},
+	},
+	"cyclomatic": {
+		{10, "fine", ""},
+		{20, "busy", "check the tests cover each branch"},
+		{1e9, "go fix this", "too many paths to test honestly; decompose"},
+	},
+	"nesting": {
+		{3, "fine", ""},
+		{5, "deep", "invert conditions and return early"},
+		{1e9, "go fix this", "invert conditions and return early"},
+	},
+}
+
+// classify returns a label and a suggested action for a metric value.
+func classify(metric string, v float64) (string, string) {
+	base := metric
+	if i := strings.IndexByte(base, '.'); i > 0 {
+		base = base[:i] // cognitive.p90 -> cognitive
+	}
+	bs, ok := bands[base]
+	if !ok {
+		return "", ""
+	}
+	for _, b := range bs {
+		if v < b.limit {
+			return b.label, b.action
+		}
+	}
+	return "", ""
+}
+
+// driver names what is making a function hard: branching or nesting. They call
+// for different fixes, so saying which one dominates saves the reader a trip.
+func driver(cyc, nest float64) string {
+	switch {
+	case nest >= 4 && cyc < 15:
+		return "deep nesting"
+	case cyc >= 15 && nest < 3:
+		return "many branches"
+	case cyc >= 15 && nest >= 4:
+		return "both branching and nesting"
+	}
+	return ""
+}
+
+func median(v []float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	c := append([]float64(nil), v...)
+	sort.Float64s(c)
+	return c[len(c)/2]
+}
+
+// trendVerdict compares the recent window against the whole series. A reversal
+// — long improvement followed by recent worsening — is the signal most worth
+// surfacing, and the one a raw sparkline hides.
+func trendVerdict(vals []float64) string {
+	n := len(vals)
+	if n < 4 {
+		return "too few points to read a trend"
+	}
+	w := n / 4
+	if w < 2 {
+		w = 2
+	}
+	first, last := vals[0], vals[n-1]
+	recentFrom, recentTo := vals[n-w-1], vals[n-1]
+
+	pct := func(a, b float64) float64 {
+		if a == 0 {
+			return 0
+		}
+		return (b - a) / math.Abs(a) * 100
+	}
+	overall, recent := pct(first, last), pct(recentFrom, recentTo)
+
+	switch {
+	case overall < -10 && recent > 10:
+		return fmt.Sprintf("REVERSAL: improved %.0f%% overall, but the last %d points rose %.0f%% — worth investigating",
+			-overall, w, recent)
+	case recent > 20:
+		return fmt.Sprintf("worsening: up %.0f%% over the last %d points", recent, w)
+	case overall > 20:
+		return fmt.Sprintf("worsening: up %.0f%% across the series", overall)
+	case overall < -20:
+		return fmt.Sprintf("improving: down %.0f%% across the series", -overall)
+	case math.Abs(overall) <= 10 && math.Abs(recent) <= 10:
+		return "stable — no action needed"
+	}
+	return fmt.Sprintf("drifting: %+.0f%% overall, %+.0f%% recently", overall, recent)
 }

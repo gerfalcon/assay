@@ -336,23 +336,178 @@ JSONL. There is deliberately no web UI here.
 
 ## Interpreting the numbers
 
-**Cyclomatic and cognitive are not the same metric twice.** Cyclomatic counts
-paths; cognitive models what a person must hold in their head — it penalises
-nesting and charges `else` a flat 1. A flat twenty-case switch scores high
-cyclomatic and low cognitive. Send people to fix the cognitive ones.
+### What is a normal value?
 
-**Read p50 and p90, not max.** If only the max moved it is usually one function,
-or just sampling — adding functions reaches further into the tail whether or not
-anything decayed.
+Conventional bands, not laws. They exist so a reader who has never seen a
+cognitive score knows whether 27 is fine.
 
-**Watch the derivative.** Nobody agrees that complexity 12 is bad. Everybody
-agrees peak complexity going 12 → 40 in four months is bad.
+| cognitive | meaning | what to do |
+|---|---|---|
+| < 5 | fine | nothing |
+| 5–15 | readable | nothing |
+| 15–25 | worth a look | read it; if you cannot hold it in your head, split it |
+| > 25 | go fix it | extract the nested branches into named functions |
 
-**Never gate on an aggregate score.** Any metric used as a gate on a
-probabilistic optimiser gets gamed — gate on complexity and an agent will split
-functions arbitrarily to satisfy it. Gate on new findings; keep aggregates
-advisory.
+| cyclomatic | meaning | what to do |
+|---|---|---|
+| < 10 | fine | nothing |
+| 10–20 | busy | check the tests cover each branch |
+| > 20 | go fix it | too many paths to test honestly; decompose |
 
-**Compare within a language only.** Branch-keyword density is a language trait:
-Go's explicit `if err != nil` inflates complexity counts against C#'s exceptions.
-Cross-language comparison measures the language, not the team.
+| nesting | meaning | what to do |
+|---|---|---|
+| ≤ 3 | fine | nothing |
+| 4–5 | deep | invert conditions and return early |
+| > 5 | go fix it | same, urgently |
+
+`lens` applies these automatically and prints the verdict under each entry.
+
+### Which number to read
+
+**p50 and p90. Not max.**
+
+- **p50 moved** → the typical function changed. This is the real signal.
+- **p90 moved** → the difficult end of the codebase changed.
+- **only max moved** → probably one function, or just sampling. Adding functions
+  reaches further into the tail whether or not anything decayed.
+
+A codebase with p50 = 3 and max = 40 has one bad function. A codebase with
+p50 = 12 has a culture problem. Those need completely different responses, and
+the max looks similar in both.
+
+### Cognitive vs cyclomatic — they disagree on purpose
+
+Cyclomatic counts independent paths. Cognitive models what a person has to hold
+in their head: it penalises nesting, charges `else` a flat 1, and treats
+`a && b && c` as one idea rather than three.
+
+- **Flat twenty-case switch** → high cyclomatic, low cognitive. Many paths,
+  nothing to remember. Usually fine.
+- **Three nested ifs** → the reverse. Fewer paths, much harder to read.
+
+**Send people to fix the cognitive ones.** Use cyclomatic to judge whether the
+tests are honest.
+
+### Diagnosing from the pair
+
+| cyclomatic | nesting | the problem | the fix |
+|---|---|---|---|
+| high | low | too many branches | extract named functions |
+| low | high | deep nesting | invert conditions, return early |
+| high | high | both | decompose before anything else |
+
+### Trends
+
+**Watch the derivative, not the level.** Nobody agrees complexity 12 is bad.
+Everybody agrees 12 → 40 in four months is bad.
+
+**A reversal is the most actionable signal** — a long improving trend that turns
+upward recently means something changed. `lens trend` flags these explicitly.
+
+**Normalise for growth.** Raw finding counts rise simply because the codebase
+grew. Use per-1,000-statements, or compare the *marginal* rate: findings added ÷
+statements added over a window, against the codebase average. If the marginal
+rate is below the average, the new code is cleaner than what was already there.
+
+### Three ways to fool yourself
+
+**Gating on an aggregate.** Any metric used as a gate on a probabilistic
+optimiser gets gamed — gate on complexity and an agent will split functions
+arbitrarily to satisfy it. Gate on new findings; keep aggregates advisory.
+
+**Comparing across languages.** Branch-keyword density is a language trait: Go's
+explicit `if err != nil` inflates counts against C#'s exceptions. Cross-language
+comparison measures the language, not the team. Compare a repo to itself.
+
+**Believing a rule you have not audited.** Published research found 63% of
+detected "hard-severity" smells were expert-judged false positives. Three of
+assay's own five original rules were noise against a real service. Read the
+findings before you trust the count.
+
+---
+
+## Integrating external tools
+
+### C# — Roslyn analyzers
+
+Free, MIT, and usually absent. Most .NET repos have no analyzers enabled at all,
+which is the actual gap — nothing is checking anything.
+
+```xml
+<!-- Directory.Build.props at the repo root -->
+<Project>
+  <PropertyGroup>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <ErrorLog>$(MSBuildThisFileDirectory)artifacts/roslyn.sarif%2cversion=2.1</ErrorLog>
+  </PropertyGroup>
+</Project>
+```
+
+```sh
+dotnet build
+ratchet import artifacts/roslyn.sarif --root . --mode baseline
+ratchet import artifacts/roslyn.sarif --root . --mode check
+```
+
+`%2cversion=2.1` is an escaped comma and is **required** — without it MSBuild
+emits SARIF 1.0, which this importer does not read.
+
+Add StyleCop or Roslynator as PackageReferences for more rules. Do **not** also
+set `TreatWarningsAsErrors`: two gates fighting each other is how teams end up
+disabling both.
+
+### semgrep — custom rules, any language
+
+```sh
+semgrep --config rules/org --sarif > semgrep.sarif
+ratchet import semgrep.sarif --root . --mode check
+```
+
+> `semgrep scan` exits **0 even with findings** unless you pass `--error`.
+> `semgrep ci` fails by default. Test every new gate by planting a violation.
+
+The OSS engine is single-file only; cross-file analysis is the paid tier. That is
+fine for local patterns (casts, swallowed errors, banned imports) and useless for
+anything needing call-graph reasoning.
+
+### Go — golangci-lint
+
+```sh
+golangci-lint run --out-format sarif | ratchet import - --mode check
+```
+
+Use alongside `ratchet scan`, not instead of it — different rules, no overlap.
+
+### Dart
+
+```yaml
+dev_dependencies:
+  dart_code_linter: ^4.4.0
+```
+
+```sh
+dart run dart_code_linter:metrics analyze lib --reporter=json > dcl.json
+```
+
+No SARIF reporter, so you own a small converter (~40 lines mapping
+`records[].issues[]` to SARIF `results[]`). Add `lakos` for cycle detection.
+
+### Anything else
+
+If it emits SARIF, `ratchet import` reads it: CodeQL, Trivy, ESLint
+(`-f @microsoft/eslint-formatter-sarif`), PMD, Bandit.
+
+---
+
+## For agents
+
+`docs/agent-guide.md` is written for an AI agent to read before helping someone
+set this up. It covers the decision tree, what to explain, verification, and the
+mistakes to steer people away from.
+
+```
+Help me understand and set up assay. Read docs/agent-guide.md first,
+then walk me through it step by step.
+```
