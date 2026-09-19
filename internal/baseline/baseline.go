@@ -19,7 +19,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 // FileVersion guards against reading a baseline written by an incompatible build.

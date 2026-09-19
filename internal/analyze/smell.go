@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 // Rule identifiers. Stable strings — they end up in baselines checked into git,

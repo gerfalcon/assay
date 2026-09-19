@@ -18,12 +18,14 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/sherzing/ratchet/internal/analyze"
-	"github.com/sherzing/ratchet/internal/baseline"
-	"github.com/sherzing/ratchet/internal/model"
-	"github.com/sherzing/ratchet/internal/report"
-	"github.com/sherzing/ratchet/internal/sarif"
+	"github.com/sherzing/assay/internal/analyze"
+	"github.com/sherzing/assay/internal/baseline"
+	"github.com/sherzing/assay/internal/model"
+	"github.com/sherzing/assay/internal/report"
+	"github.com/sherzing/assay/internal/sarif"
+	"github.com/sherzing/assay/pkg/schema"
 )
 
 const version = "0.1.0"
@@ -154,18 +156,122 @@ func cmdScan(args []string) error {
 	var c commonFlags
 	bindCommon(fs, &c)
 	failOn := fs.String("fail-on", "", "exit non-zero if any finding at or above this severity: error|warn|info")
+	emit := fs.String("emit", "", "emit assay JSONL instead of a report: measures|findings")
+	repoName := fs.String("repo", "", "repo name to stamp on emitted records")
 	root := parseArgs(fs, args)
 	rep, err := analyze.Scan(root, c.options())
 	if err != nil {
 		return err
 	}
-	if err := emit(rep, c); err != nil {
+	if *emit != "" {
+		// Feed strata directly: ratchet scan . --emit measures | strata append
+		name := *repoName
+		if name == "" {
+			name = filepath.Base(mustAbs(root))
+		}
+		if err := emitAssay(rep, *emit, name, gitCommit(root)); err != nil {
+			return err
+		}
+	} else if err := emitReport(rep, c); err != nil {
 		return err
 	}
 	if *failOn != "" && exceeds(rep, model.Severity(*failOn)) {
 		os.Exit(1)
 	}
 	return nil
+}
+
+func mustAbs(p string) string {
+	a, err := filepath.Abs(p)
+	if err != nil {
+		return p
+	}
+	return a
+}
+
+// emitAssay writes assay JSONL records so ratchet composes with strata.
+//
+// The measure record carries scope, so project rollups and file-level hotspots
+// travel on the same stream and a consumer filters rather than parsing two
+// different shapes.
+func emitAssay(rep *model.Report, kind, repo, commit string) error {
+	enc := schema.NewEncoder(os.Stdout)
+	defer enc.Flush()
+	now := time.Now().UTC()
+
+	switch kind {
+	case "measures":
+		put := func(scope schema.Scope, path, metric string, v float64) error {
+			return enc.Write(&schema.Measure{
+				Repo: repo, Commit: commit, TS: now,
+				Scope: scope, Path: path, Metric: metric, Value: v,
+			})
+		}
+		s := rep.Summary
+		proj := map[string]float64{
+			"files": float64(s.Files), "funcs": float64(s.Funcs), "statements": float64(s.Statements),
+			"cyclomatic.p50": float64(s.Cyclomatic.P50), "cyclomatic.p90": float64(s.Cyclomatic.P90),
+			"cyclomatic.max": float64(s.Cyclomatic.Max), "cyclomatic.mean": s.Cyclomatic.Mean,
+			"cognitive.p50": float64(s.Cognitive.P50), "cognitive.p90": float64(s.Cognitive.P90),
+			"cognitive.max": float64(s.Cognitive.Max), "cognitive.mean": s.Cognitive.Mean,
+			"nesting.max":    float64(s.MaxNesting.Max),
+			"findings.total": float64(s.FindingsTotal),
+		}
+		for _, k := range sortedKeys(proj) {
+			if err := put(schema.ScopeProject, "", k, proj[k]); err != nil {
+				return err
+			}
+		}
+		for rule, n := range s.FindingsByRule {
+			if err := put(schema.ScopeProject, "", "findings.rule."+rule, float64(n)); err != nil {
+				return err
+			}
+		}
+		for _, f := range rep.Funcs {
+			name := f.Name
+			if f.Recv != "" {
+				name = f.Recv + "." + f.Name
+			}
+			p := f.File + ":" + name
+			for _, kv := range []struct {
+				m string
+				v float64
+			}{
+				{"cyclomatic", float64(f.Cyclomatic)},
+				{"cognitive", float64(f.Cognitive)},
+				{"nesting", float64(f.MaxNesting)},
+				{"statements", float64(f.Statements)},
+			} {
+				if err := put(schema.ScopeFunction, p, kv.m, kv.v); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+
+	case "findings":
+		for _, f := range rep.Findings {
+			if err := enc.Write(&schema.Finding{
+				Repo: repo, Commit: commit, TS: now, Tool: "ratchet",
+				Rule: f.Rule, Severity: schema.Severity(f.Severity),
+				File: f.File, Line: f.Line, Col: f.Col, Symbol: f.Func,
+				Message: f.Message, Suggest: f.Suggest, Fingerprint: f.Fingerprint,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown --emit %q (want measures|findings)", kind)
+}
+
+func sortedKeys(m map[string]float64) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func exceeds(rep *model.Report, min model.Severity) bool {
@@ -178,7 +284,7 @@ func exceeds(rep *model.Report, min model.Severity) bool {
 	return false
 }
 
-func emit(rep *model.Report, c commonFlags) error {
+func emitReport(rep *model.Report, c commonFlags) error {
 	out := bufio.NewWriter(os.Stdout)
 	defer out.Flush()
 	switch c.format {

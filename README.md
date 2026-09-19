@@ -1,186 +1,114 @@
-# ratchet
+# assay
 
-Measure Go code quality, and hold the line against regression.
+Small, independent tools for measuring code quality over time. They compose over
+JSON Lines, following the Unix model: each does one thing, reads a stream, writes
+a stream.
 
-A ratchet turns one way. That is the whole design: record what is wrong today,
-tolerate it, and fail only on what gets **worse**.
+```sh
+ratchet scan . --emit measures | strata append --repo service-a
+golangci-lint run --out-format sarif | ratchet import - | ratchet check
+strata query --repo service-a --metric cognitive.p90 --since 2026-01 --format csv
+```
 
-## Why this exists
+## Why
 
-Two claims sit behind this tool.
+Sonar and Codacy charge per seat, largely for a *platform* — server, storage,
+ingestion, dashboards. AI made building that kind of platform cheap. It did not
+make **good rules** cheap: authoring a syntactically valid rule takes seconds,
+knowing whether it is mostly noise still takes judgement and real codebases.
 
-The first is that AI-generated code degrades maintainability over time, and that
-this is a model training issue rather than a prompting one — coding-agent RL
-rewards "the test passed and nothing else broke", and nothing in that objective
-penalises poor design. The artefacts are predictable: casts added to satisfy a
-checker, defensive wrapping that adds no value, errors acknowledged then dropped.
+So the value is not the tool. It is the **rule corpus and the precision data
+behind it** — the part that compounds, because it is accumulated judgement.
 
-The second is that if you can **detect and measure** degradation, you can work on
-it. That is what this tool is for.
+## The contract is the format
 
-It produces two outputs on purpose:
+Composability comes from a shared data format, not from good module boundaries.
+`ls | grep | wc` works because of text. Three versioned JSONL records:
 
-1. **Measurement** — per-function metrics as JSON, cheap enough to replay over
-   git history and plot a trend.
-2. **Action** — every finding carries a file, a line, the specific violation and
-   a suggested fix. A number alone tells nobody what to do.
+| record | what it says |
+|---|---|
+| `finding` | something is wrong at this location |
+| `measure` | this number, this commit, this scope (project/module/file/function) |
+| `verdict` | a human judged this finding |
 
-## Why a ratchet and not a gate
+`schemas/*.json` is the specification. The Go types in `pkg/schema` are one
+implementation — a conforming tool in any language composes with these.
 
-Turn a rule on across an existing codebase and you get four thousand violations,
-and the team switches it off that afternoon. Big-bang conformance does not land.
+## Tools
 
-So: `ratchet baseline` records current violations as tolerated, and
-`ratchet check` fails only on new ones. The codebase can improve or hold, never
-regress, and nobody has to stop and fix four thousand things first.
+| | |
+|---|---|
+| **`ratchet`** | the gate. `scan`, `import` (SARIF from any linter), `check` |
+| **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts` |
+| **`rulebook`** | *(not built)* rules + verdicts + measured precision |
 
-Generalised from ArchUnit's `FreezingArchRule`, including its safety property —
-the baseline cannot be silently regenerated, or "fix the failure" quietly becomes
-"rewrite the baseline".
+Each is usable with the others absent. `strata` has nothing quality-specific in
+it — point it at any conforming stream and range queries come back.
+
+There is deliberately **no web UI**. Grafana over the rollups, or a static site
+from JSONL, covers it. Revisit only if its absence becomes a real complaint.
+
+## The verdict split is the point
+
+A single "tolerated" bucket conflates two different things:
+
+| verdict | is it debt? | feeds rule quality? |
+|---|---|---|
+| `accepted` | yes — pay it down | no |
+| `false-positive` | no — the rule is wrong | **yes** |
+| `wont-fix` | no | no |
+
+False-positive rate per rule becomes a **rule quality metric**. Rank rules by
+measured precision, retire the noisy ones, publish the data. That is the record
+vendors keep in their databases, and the reason this is worth building.
+
+Motivating evidence: SmellBench (2026) found **63.1%** of detected
+"hard-severity" architectural smells were expert-judged false positives. Three of
+ratchet's own five original rules were noise against a real codebase, and only
+running them revealed it.
+
+## Rule tiers and promotion
+
+```
+rules/core/    published precision data, community-maintained
+rules/org/     a company's own pack
+rules/local/   project-specific, in the repo being analysed
+```
+
+Resolution is local → org → core, most specific wins. A rule is **promoted on
+evidence**: run against ≥N repositories, ≥M verdicts, precision ≥0.8, judgements
+from ≥2 organisations.
+
+**Precision data is portable even when code is not.** An organisation can
+contribute "47 findings, 41 confirmed, 6 false positives" for a rule without
+sharing a line of source. That is what lets closed-source teams participate in an
+open corpus.
+
+## Storage: files
+
+```
+.assay/
+  measures/2026/09/19.jsonl      date-partitioned, append-only
+  findings/2026/09/19T1000-sha.jsonl
+  verdicts/verdicts.jsonl        append-only log, last write wins
+  rollup/                        derived cache, always rebuildable
+```
+
+No database. Raw data is the truth and rollups are a cache, so there is no state
+that cannot be recomputed. Partitioning by date makes a range query a directory
+listing — no index. And every file is readable with `grep` and `jq` without any
+binary here, which is the durability property that matters when tools get
+abandoned or relicensed.
+
+Scale: ~12,500 records across three repos is 3 MB. Five repos over five years
+with function-level detail lands in the low hundreds of MB.
 
 ## Install
 
 ```sh
-go build -o ratchet ./cmd/ratchet
+go install github.com/sherzing/assay/cmd/ratchet@latest
+go install github.com/sherzing/assay/cmd/strata@latest
 ```
 
-No third-party dependencies. Stdlib `go/ast` only.
-
-## Use
-
-```sh
-ratchet scan .                    # measure and report
-ratchet scan . --format json      # the trend record
-ratchet scan . --format sarif     # GitHub PR annotations
-ratchet baseline .                # record today as tolerated
-ratchet check .                   # exit 1 only on regression
-ratchet check . --strict-caps     # also fail if peak complexity grows
-ratchet baseline . --tighten      # lock in what has been fixed
-ratchet history . --since "6 months ago" --interval "1 week"
-ratchet rules                     # what it checks and why
-
-# any language, via SARIF from its native linter
-golangci-lint run --out-format sarif | ratchet import - --mode check
-ratchet import roslyn.sarif --root . --mode baseline
-ratchet import semgrep.sarif --mode check
-```
-
-## Any language, via SARIF
-
-ratchet only parses Go. But the valuable part was never the detectors — it is the
-**mechanism**: a fingerprinted baseline that tolerates what exists, fails only on
-what is new, and cannot be silently reset. That is language-agnostic.
-
-So `ratchet import` consumes SARIF 2.1.0 from whatever each language already has:
-golangci-lint, Roslyn analyzers, semgrep, CodeQL, Trivy, `dart analyze` via a
-converter. Better fidelity than anything we would write, and no new parsers to
-keep alive.
-
-- rule IDs are namespaced by tool, so two linters emitting `unused` cannot
-  silently excuse each other in one baseline
-- the producer's own `partialFingerprints` are preferred when supplied; otherwise
-  ratchet hashes file + rule + logical location + snippet, **never the line number**
-- SARIF `suppressions` are honoured, for the same reason `//nolint` is
-- absolute and `file://` paths are made repo-relative so imported findings key
-  identically to native ones
-
-## Metrics
-
-| Metric | What it tells you |
-|---|---|
-| cyclomatic | independent paths — branch density |
-| cognitive | how hard it is for a *person* to follow |
-| maxNesting | depth; usually rises before the others do |
-| statements | size, counted in AST nodes so formatting cannot move it |
-| params / results | signature width |
-
-**Cyclomatic and cognitive are not the same metric twice.** A flat twenty-case
-switch scores high on cyclomatic and low on cognitive: many paths, nothing to
-hold in your head. Three nested ifs score the reverse. There is a test asserting
-they diverge, because implementing the same thing twice under two names is the
-easy mistake here.
-
-Distributions (p50/p90/max) are reported rather than means. A mean hides the
-tail, and the tail is the thing worth fixing — one unmaintainable function among
-a thousand tidy ones barely moves an average.
-
-## Rules
-
-| Rule | Severity | What it catches |
-|---|---|---|
-| `naked-type-assertion` | error | `x.(T)` without comma-ok — panics at runtime. The Go analogue of a cast added to satisfy a checker |
-| `error-swallowed` | error | `_ = err`, empty error branches, `return nil` when err is non-nil |
-| `any-in-exported-signature` | warn | pushes type checking to runtime and onto the caller |
-| `panic-in-library` | warn | removes the caller's ability to decide |
-| `else-after-return` | info | nesting for no reason |
-
-Every rule is individually toggleable via `--rules`. A rule you cannot switch off
-is a rule that gets the whole tool switched off. For the same reason ratchet
-honours `//nolint` directives — a codebase already running golangci-lint has an
-established way to say "I know, and I meant it".
-
-Two exemptions were added after running against a real service (`service-b`),
-because both produced pure noise:
-
-- **variadic `...any` is not flagged** — it is the pass-through idiom behind
-  `fmt.Printf`, SQL driver args and structured logging
-- **`panic` inside `must*`/`Must*` is not flagged** — the prefix is the Go
-  convention announcing an intentional panic, as in `regexp.MustCompile`
-
-## Design decisions worth knowing
-
-**No type information.** No `go/types`, no package loading. That costs precision
-— error detection is name-based heuristics — and buys the ability to replay over
-thousands of historical commits, many of which will not compile with the current
-toolchain. Files that fail to parse are skipped rather than fatal.
-
-**Fingerprints exclude line numbers.** Keyed on file, rule, enclosing function
-and a normalised snippet. If a fingerprint moved whenever someone reformatted,
-the first `gofmt` after adoption would read as a wave of new violations and the
-gate would be switched off within a week. There is a test for this.
-
-**Measure the derivative, not the level.** Nobody will agree that complexity 12
-is bad. Everybody will agree that peak complexity went from 12 to 40 in four
-months.
-
-**Never gate on an aggregate score.** Any metric used as a gate on a
-probabilistic optimiser gets gamed — gate on complexity and an agent will split
-functions arbitrarily to satisfy it. So the default gate is the fingerprint set
-(new violations only); aggregate caps are advisory unless you pass
-`--strict-caps`, and even then they are maxima on the tail, not averages.
-
-**Tests assert exact numbers.** A metric whose definition drifts silently is
-worse than no metric: the trend line stays smooth while its meaning changes
-underneath, and every historical datapoint becomes a lie.
-
-**Tests, vendor and generated code are excluded by default.** Test code has
-different norms, vendored code is not ours to fix, and generated code changes
-en masse — any of the three would dominate a trend line.
-
-## It holds its own baseline
-
-ratchet runs on ratchet in CI. If it cannot hold its own line it has no standing
-to hold anyone else's.
-
-The first run reported `maxNesting` at cognitive 52 — the worst function in the
-codebase, and one of its own metric implementations. Extracting the duplicated
-switch/select traversal took peak cognitive complexity from **52 to 41**, peak
-nesting from **4 to 3**, and mean cognitive from **6.06 to 4.72**, with `check`
-confirming no regression. That loop — measure, locate, fix, re-measure, verify —
-is the entire point.
-
-## What it does not do
-
-- No cross-file or whole-program analysis. Single-file AST only.
-- No architecture conformance (layering, allowed dependencies). Go's compiler
-  already forbids import cycles, so the useful gate there is a declared layering
-  rule — see `go-arch-lint`.
-- No change coupling. That comes from git history, not source, and `scc` already
-  does it well in one pass.
-- No autofix yet. Suggestions are text.
-
-## Roadmap
-
-Tracked as `talanet-abl` and children. Next up: SARIF wiring into CI, the
-two-run eval harness with a metric holdout, and autofix for the mechanically
-safe rules.
+Single Go module, one binary per `cmd/` — install only what you want. The shared
+packages are an implementation convenience; the interop contract is the JSONL.

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 func finding(rule, file, fn, snip string) model.Finding {

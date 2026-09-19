@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 func imp(t *testing.T, js string, opt Options) []model.Finding {

@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 // Options controls a scan.

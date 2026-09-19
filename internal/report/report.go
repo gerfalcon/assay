@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 // JSON writes the full report. This is the stable contract other tools read.
@@ -85,7 +85,7 @@ func SARIF(w io.Writer, rep *model.Report, rules map[string]string) error {
 		"runs": []any{map[string]any{
 			"tool": map[string]any{"driver": map[string]any{
 				"name":           "ratchet",
-				"informationUri": "https://github.com/sherzing/ratchet",
+				"informationUri": "https://github.com/sherzing/assay",
 				"rules":          ruleList,
 			}},
 			"results": results,

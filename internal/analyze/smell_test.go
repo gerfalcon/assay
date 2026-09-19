@@ -5,7 +5,7 @@ import (
 	"go/token"
 	"testing"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 func findingsFor(t *testing.T, src string) []model.Finding {

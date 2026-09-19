@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sherzing/ratchet/internal/model"
+	"github.com/sherzing/assay/internal/model"
 )
 
 // Minimal SARIF 2.1.0 subset. Deliberately partial: we decode only the fields
