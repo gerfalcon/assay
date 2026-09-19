@@ -9,7 +9,7 @@
 // that came out of strata. That is the test of whether this is a real tool or a
 // strata subcommand wearing a disguise:
 //
-//	strata query --repo service-a --metric cognitive | lens top
+//	strata query --repo myservice --metric cognitive | lens top
 //	ratchet scan . --emit measures | lens top --metric cognitive
 //
 // grep and jq can do all of this. They just cannot do it at a glance, and the
@@ -75,9 +75,9 @@ usage:
 
 input: JSONL on stdin, or --store DIR to read a strata store
 
-  strata query --repo service-a --metric cognitive | lens top
+  strata query --repo myservice --metric cognitive | lens top
   ratchet scan . --emit measures | lens top --metric cognitive --n 10
-  lens trend --store .assay --repo service-a --metric cognitive.p90
+  lens trend --store .assay --repo myservice --metric cognitive.p90
 `)
 }
 

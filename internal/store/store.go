@@ -15,8 +15,8 @@
 //     comes free and last-write-wins needs no transactions.
 //  4. Every file is readable with grep and jq, without our binary.
 //
-// Scale check: service-a is 2,941 commits x ~15 project metrics ~= 44k records,
-// about 4 MB. All five repos over five years with file-level detail lands in
+// Scale check: a 5-year service is ~2,900 commits x ~15 project metrics ~= 44k records,
+// about 4 MB. Five repos over five years with file-level detail lands in
 // the low hundreds of MB. A linear scan of a date-partitioned subset is
 // milliseconds. If that ever stops being true the upgrade is Parquet or an
 // embedded KV as an INDEX over unchanged JSONL — the on-disk contract does not

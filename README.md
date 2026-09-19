@@ -5,9 +5,9 @@ JSON Lines, following the Unix model: each does one thing, reads a stream, write
 a stream.
 
 ```sh
-ratchet scan . --emit measures | strata append --repo service-a
+ratchet scan . --emit measures | strata append --repo myservice
 golangci-lint run --out-format sarif | ratchet import - | ratchet check
-strata query --repo service-a --metric cognitive.p90 --since 2026-01 --format csv
+strata query --repo myservice --metric cognitive.p90 --since 2026-01 --format csv
 ```
 
 ## Why
@@ -51,7 +51,7 @@ terminal; Grafana over the rollups or a static site from JSONL covers the rest.
 
 ```
 $ lens trend --metric cplx.per_kloc --period month
-service-c  ▅▇▇█▇▇▆▇▇▇▆▆▆▆▆▅▅▄▄▄▄▄▄▄▃▃▂▂▃▂▁▂▁▁▁▁▁▁▁▁▂▁▂▂▂▂▁▁▁▂▁▂▂▁▂▂▂▃▄▄▅▅▅  49.37 → 49.00
+service-c     ▅▇▇█▇▇▆▇▇▇▆▆▆▆▆▅▅▄▄▄▄▄▄▄▃▃▂▂▃▂▁▂▁▁▁▁▁▁▁▁▂▁▂▂▂▂▁▁▁▂▁▂▂▁▂▂▂▃▄▄▅▅▅  49.37 → 49.00
                2021-05-01 → 2026-07-01  (63 points)
 ```
 

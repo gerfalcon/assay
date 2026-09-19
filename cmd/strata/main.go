@@ -62,7 +62,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, `strata — append-only history for assay records
 
 usage:
-  … | strata append [--store DIR] [--repo NAME]
+  … | strata append [--store DIR] [--repo myservice]
   strata query    [--store DIR] [--repo N] [--metric M] [--scope S] [--since D] [--until D]
   strata rollup   [--period day|week|month] [same filters]
   strata verdicts [--store DIR] [--rule R]
@@ -70,8 +70,8 @@ usage:
 
 dates are YYYY-MM-DD. default store is .assay
 everything reads and writes JSONL, so it composes:
-  ratchet scan . --emit measures | strata append --repo service-a
-  strata query --repo service-a --metric cognitive.p90 | jq -r '[.ts,.value]|@csv'
+  ratchet scan . --emit measures | strata append --repo myservice
+  strata query --repo myservice --metric cognitive.p90 | jq -r '[.ts,.value]|@csv'
 `)
 }
 

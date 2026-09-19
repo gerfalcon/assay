@@ -158,7 +158,7 @@ rules/core/       shipped with assay, has published precision data
 A rule is a YAML file:
 
 ```yaml
-# rules/org/acme/no-direct-db-in-handler.yaml
+# rules/org/myorg/no-direct-db-in-handler.yaml
 rules:
   - id: no-direct-db-in-handler
     languages: [go]
@@ -196,7 +196,7 @@ before you enable it.** If more than a few are wrong, fix the rule or drop it.
 ## Keeping history
 
 ```sh
-ratchet scan . --emit measures --repo service-a | strata append
+ratchet scan . --emit measures --repo myservice | strata append
 ```
 
 That is one point in time. For a trend, replay git history:
@@ -215,7 +215,7 @@ Then query it:
 
 ```sh
 strata stat
-strata query --repo service-a --metric cognitive.p90 --since 2026-01-01 --format csv
+strata query --repo myservice --metric cognitive.p90 --since 2026-01-01 --format csv
 strata rollup --period month --metric cognitive.p90
 ```
 
@@ -258,7 +258,7 @@ worst 10 by cognitive (function scope)
 lens trend --store .assay --metric cplx.per_kloc --period month
 ```
 ```
-service-c  ▅▇▇█▇▇▆▇▇▇▆▆▆▆▆▅▅▄▄▄▄▄▄▄▃▃▂▂▃▂▁▂▁▁▁▁▁▁▁▁▂▁▂▂▂▂▁▁▁▂▁▂▂▁▂▂▂▃▄▄▅▅▅  49.37 → 49.00  ▼ -1%
+service-c     ▅▇▇█▇▇▆▇▇▇▆▆▆▆▆▅▅▄▄▄▄▄▄▄▃▃▂▂▃▂▁▂▁▁▁▁▁▁▁▁▂▁▂▂▂▂▁▁▁▂▁▂▂▁▂▂▂▃▄▄▅▅▅  49.37 → 49.00  ▼ -1%
                2021-05-01 → 2026-07-01  (63 points)
 ```
 
@@ -266,7 +266,7 @@ The sparkline is the point: five years in one line, and the tail turning back up
 is visible at a glance in a way no table makes obvious.
 
 ```sh
-lens diff --store .assay --repo service-a --since 2026-01-01    # what moved
+lens diff --store .assay --repo myservice --since 2026-01-01    # what moved
 lens compare --store .assay --scope project                 # repos side by side
 ```
 
@@ -274,7 +274,7 @@ lens compare --store .assay --scope project                 # repos side by side
 
 ```sh
 ratchet scan . --emit measures | lens top --metric cognitive
-strata query --repo service-a --metric cognitive | lens top --n 20
+strata query --repo myservice --metric cognitive | lens top --n 20
 ```
 
 ---
@@ -339,8 +339,8 @@ JSONL. There is deliberately no web UI here.
 ### What is a normal value?
 
 **Bands are percentiles of real code, not folklore.** The Go defaults come from
-**3,053 functions across two production services** — service-a (5 years) and
-service-b (3 months). The two distributions agree closely, which is what makes
+**3,053 functions across two production services** — one 5 years old, one
+3 months old. The two distributions agree closely, which is what makes
 them usable as a default:
 
 | | p50 | p90 | p99 | max |

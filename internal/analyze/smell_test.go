@@ -94,7 +94,7 @@ func TestAnyInExportedSignature(t *testing.T) {
 		{"concrete is fine", `func Do(x string) {}`, 0},
 		{"non-empty interface is fine", `func Do(x interface{ Read() }) {}`, 0},
 		// Variadic ...any is the fmt/sql/logging pass-through idiom. Real code
-		// (pgx wrappers in service-b) proved flagging it is pure noise.
+		// (a pgx wrapper in a real service) proved flagging it is pure noise.
 		{"variadic any is idiomatic", `func Do(xs ...any) {}`, 0},
 	}
 	for _, tc := range cases {

@@ -194,7 +194,7 @@ Use this *in addition to* `ratchet scan` — different rules, no overlap.
 
 ```sh
 ratchet history . --interval week --first-parent --jobs 8 > history.jsonl
-ratchet scan . --emit measures --repo NAME | strata append
+ratchet scan . --emit measures --repo myservice | strata append
 ```
 
 **Always pass `--first-parent`.** It walks the merge timeline. Without it you
