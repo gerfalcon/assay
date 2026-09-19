@@ -38,7 +38,7 @@ func TestUnknownFieldsAreRejected(t *testing.T) {
 	leaks := map[string]any{
 		"file":         "internal/impl/postgres/pool.go",
 		"fingerprints": []string{"9f2a3c4d5e6f7081"},
-		"repoNames":    []string{"service-a", "service-b"},
+		"repoNames":    []string{"billing-api", "orders-worker"},
 		"reason":       "DEBT-412 needs the v2 migration",
 		"by":           "sven.herzing@acme.com",
 		"commit":       "15b279b2b8086cc90dc1ab8b3a26203126075dc7",
