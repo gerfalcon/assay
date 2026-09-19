@@ -136,13 +136,90 @@ ratchet scan . --rules naked-type-assertion,error-swallowed
 codebase, and a rule you cannot disable is a rule that gets the whole tool
 disabled.
 
-### Suppressing a single case
+### Judging a finding
 
-`//nolint` on the line, with a reason:
+Three verdicts, and the distinction is the point. A single "tolerated" bucket
+conflates debt with noise.
+
+| verdict | meaning | is it debt? | counts toward rule precision? |
+|---|---|---|---|
+| `accepted` | real, we carry it for now | **yes** | no |
+| `false-positive` | the rule is wrong here | no | **yes** |
+| `wont-fix` | real, deliberately not fixing | no | no |
+
+All three stop `ratchet check` failing. They differ in what else happens:
+`docket` refuses to ticket a false positive, and false-positive rate per rule is
+what tells you which rules are noise.
+
+**In code, for a specific instance:**
 
 ```go
-s := x.(string) //nolint:forcetypeassert // validated by the caller
+// quality:false-positive this API is genuinely polymorphic by design
+func Store(key string, value any) error
+
+// quality:accepted until=2026-12-31 DEBT-412 — untangling needs the v2 migration
+func (s *Service) recomputeOrderTotals(...)
+
+// quality:wont-fix panics by design, this is a must* helper in all but name
+func MustParse(s string) Config
 ```
+
+The marker is **`quality:`, not `assay:`** — deliberately. A tool-branded prefix
+says "this belongs to one vendor" and makes every other analyser ignore it. This
+is meant to be a convention other tools can read, not a moat.
+
+The reason sits next to the code it excuses, so a reviewer sees both in the same
+diff. That is a far stronger review path than a hash in a JSON file.
+
+**In project config, for a pattern:**
+
+Some judgements are blanket, and annotating them would mean 97 comments.
+`.quality.yaml` at the repo root:
+
+```yaml
+verdicts:
+  - rule: any-in-exported-signature
+    path: "**/generated/**"
+    verdict: false-positive
+    reason: generated code follows the generator's conventions, not ours
+```
+
+First match wins, read top to bottom. An in-code annotation beats config —
+it is more specific, and someone wrote it while looking at that exact code.
+Every entry **must** carry a reason: an unexplained exception is
+indistinguishable from an oversight.
+
+`//nolint` still works and still suppresses entirely.
+
+### Review-by dates, and seeing what you have agreed to carry
+
+`until=YYYY-MM-DD` makes an exception expire. Past the date, `ratchet` warns but
+does not fail — nothing breaks, but the staleness is visible. **Removing the date
+is itself the decision to make it permanent**, which is fine as long as someone
+chose it.
+
+```sh
+ratchet exceptions .            # everything tolerated, and why
+ratchet exceptions . --expired  # only the stale ones
+```
+
+```
+verdict          review-by   location                       reason
+────────────────────────────────────────────────────────────────────────────────
+false-positive   permanent   pool.go:4                      genuinely polymorphic by design
+accepted         2026-12-31  service.go:1289                DEBT-412 — needs the v2 migration
+accepted         2026-01-31 ⚠ legacy.go:88                   DEBT-101 — meant to be done last quarter
+
+2 accepted, 1 false-positive, 1 wont-fix, 5 unjudged
+
+⚠  1 past their review-by date. Still passing — but nobody has looked.
+```
+
+The ratchet stops debt growing; nothing makes it shrink. This is the report that
+stops a baseline quietly becoming permanent.
+
+**Unjudged is counted separately from accepted, on purpose.** A finding nobody
+has looked at is not evidence either way when computing rule precision.
 
 ### Your own rules
 

@@ -51,6 +51,8 @@ func main() {
 		err = cmdImport(os.Args[2:])
 	case "rules":
 		cmdRules()
+	case "exceptions":
+		err = cmdExceptions(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("ratchet", version)
 	case "help", "-h", "--help":
@@ -75,6 +77,7 @@ usage:
   ratchet check    [flags] [path]   exit non-zero only on regression
   ratchet history  [flags] [path]   metric series over git history
   ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
+  ratchet exceptions [path]         everything currently tolerated, and why
   ratchet rules                     list rules
   ratchet version
 
@@ -101,6 +104,17 @@ func bindCommon(fs *flag.FlagSet, c *commonFlags) {
 	fs.BoolVar(&c.includeVendor, "include-vendor", false, "analyse vendor/")
 	fs.BoolVar(&c.detail, "detail", true, "include per-function records")
 	fs.IntVar(&c.top, "top", 10, "hotspots to list in text output")
+}
+
+// loadCfg attaches project-level verdicts. A missing config is not an error —
+// most repos will not have one, and the in-code annotations stand alone.
+func loadCfg(root string, opt analyze.Options) (analyze.Options, error) {
+	cfg, err := analyze.LoadConfig(root)
+	if err != nil {
+		return opt, err
+	}
+	opt.Config = cfg
+	return opt, nil
 }
 
 func (c commonFlags) options() analyze.Options {
@@ -159,7 +173,11 @@ func cmdScan(args []string) error {
 	emit := fs.String("emit", "", "emit assay JSONL instead of a report: measures|findings")
 	repoName := fs.String("repo", "", "repo name to stamp on emitted records")
 	root := parseArgs(fs, args)
-	rep, err := analyze.Scan(root, c.options())
+	opt, err := loadCfg(root, c.options())
+	if err != nil {
+		return err
+	}
+	rep, err := analyze.Scan(root, opt)
 	if err != nil {
 		return err
 	}
@@ -270,6 +288,8 @@ func emitFindings(enc *schema.Encoder, rep *model.Report, repo, commit string, n
 			Rule: f.Rule, Severity: schema.Severity(f.Severity),
 			File: f.File, Line: f.Line, Col: f.Col, Symbol: f.Func,
 			Message: f.Message, Suggest: f.Suggest, Fingerprint: f.Fingerprint,
+			Verdict: schema.Judgement(f.Verdict), VerdictWhy: f.VerdictWhy,
+			VerdictUntil: f.VerdictUntil, VerdictFrom: f.VerdictFrom,
 		}); err != nil {
 			return err
 		}
@@ -344,7 +364,11 @@ func cmdBaseline(args []string) error {
 	force := fs.Bool("force", false, "overwrite an existing baseline")
 	tighten := fs.Bool("tighten", false, "drop entries that no longer reproduce, keep the rest")
 	root := parseArgs(fs, args)
-	rep, err := analyze.Scan(root, c.options())
+	opt, err := loadCfg(root, c.options())
+	if err != nil {
+		return err
+	}
+	rep, err := analyze.Scan(root, opt)
 	if err != nil {
 		return err
 	}
@@ -402,7 +426,11 @@ func cmdCheck(args []string) error {
 	if err != nil {
 		return fmt.Errorf("%w\n  run `ratchet baseline` first", err)
 	}
-	rep, err := analyze.Scan(root, c.options())
+	opt, err := loadCfg(root, c.options())
+	if err != nil {
+		return err
+	}
+	rep, err := analyze.Scan(root, opt)
 	if err != nil {
 		return err
 	}
@@ -730,4 +758,114 @@ func cmdImport(args []string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown mode %q (want report|baseline|check)", *mode)
+}
+
+// cmdExceptions lists everything currently tolerated.
+//
+// The ratchet stops debt growing; nothing makes it shrink. Without a way to see
+// the whole set, a baseline quietly becomes permanent and nobody revisits the
+// decision. This is the "what have we agreed to live with" report — including
+// the entries nobody put an expiry on.
+func cmdExceptions(args []string) error {
+	fs := flag.NewFlagSet("exceptions", flag.ExitOnError)
+	var c commonFlags
+	bindCommon(fs, &c)
+	expiredOnly := fs.Bool("expired", false, "only entries past their review-by date")
+	asJSON := fs.Bool("json", false, "emit JSON")
+	root := parseArgs(fs, args)
+
+	opt, err := loadCfg(root, c.options())
+	if err != nil {
+		return err
+	}
+	rep, err := analyze.Scan(root, opt)
+	if err != nil {
+		return err
+	}
+
+	type row struct {
+		F       model.Finding
+		Expired bool
+	}
+	var rows []row
+	counts := map[string]int{}
+	now := time.Now()
+	for _, f := range rep.Findings {
+		if f.Verdict == "" {
+			counts["unjudged"]++
+			continue
+		}
+		exp := false
+		if f.VerdictUntil != "" {
+			if t, perr := time.Parse("2006-01-02", f.VerdictUntil); perr == nil && now.After(t) {
+				exp = true
+			}
+		}
+		if *expiredOnly && !exp {
+			continue
+		}
+		counts[f.Verdict]++
+		if exp {
+			counts["expired"]++
+		}
+		rows = append(rows, row{f, exp})
+	}
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(rows)
+	}
+
+	if len(rows) == 0 {
+		if *expiredOnly {
+			fmt.Println("no expired exceptions")
+		} else {
+			fmt.Printf("no exceptions recorded (%d findings are unjudged)\n", counts["unjudged"])
+		}
+		return nil
+	}
+
+	fmt.Printf("%-16s %-11s %-30s %s\n", "verdict", "review-by", "location", "reason")
+	fmt.Println(strings.Repeat("─", 100))
+	for _, r := range rows {
+		until := r.F.VerdictUntil
+		if until == "" {
+			until = "permanent"
+		}
+		if r.Expired {
+			until += " ⚠"
+		}
+		loc := fmt.Sprintf("%s:%d", r.F.File, r.F.Line)
+		fmt.Printf("%-16s %-11s %-30s %s\n", r.F.Verdict, until, truncTail(loc, 30), truncHead(r.F.VerdictWhy, 44))
+	}
+
+	fmt.Printf("\n%d accepted, %d false-positive, %d wont-fix",
+		counts[string(schema.Accepted)], counts[string(schema.FalsePositive)], counts[string(schema.WontFix)])
+	if counts["unjudged"] > 0 {
+		fmt.Printf(", %d unjudged", counts["unjudged"])
+	}
+	fmt.Println()
+	if n := counts["expired"]; n > 0 {
+		fmt.Printf("\n⚠  %d past their review-by date. Still passing — but nobody has looked.\n", n)
+		fmt.Printf("   Renew the date, or drop it to make the exception permanent.\n")
+	}
+	return nil
+}
+
+// truncHead keeps the start — for a reason, the ticket reference and the first
+// words carry the meaning. truncTail keeps the end, because for a path the
+// filename matters more than the directory.
+func truncHead(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
+}
+
+func truncTail(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return "…" + s[len(s)-n+1:]
 }

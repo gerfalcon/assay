@@ -98,7 +98,14 @@ func BuildPlan(findings []schema.Finding, verdicts map[string]schema.Verdict,
 	byKey := map[string][]schema.Finding{}
 
 	for _, f := range findings {
+		// The verdict may travel on the finding (from an in-code annotation or
+		// project config) or come from the store. Either way it counts — a
+		// judgement is a judgement regardless of where it was recorded.
+		fp := f.Verdict == schema.FalsePositive
 		if v, ok := verdicts[f.Fingerprint]; ok && v.Verdict == schema.FalsePositive {
+			fp = true
+		}
+		if fp {
 			plan.SkippedFP++
 			fpRules[f.Rule] = true
 			continue

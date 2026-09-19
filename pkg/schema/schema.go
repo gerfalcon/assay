@@ -92,6 +92,15 @@ type Finding struct {
 	Message     string    `json:"message"`
 	Suggest     string    `json:"suggest,omitempty"`
 	Fingerprint string    `json:"fingerprint"`
+
+	// Verdict travels WITH the finding, so a consumer needs no store to know
+	// a human already judged it. Empty means unjudged, which is deliberately
+	// distinct from "accepted": an unexamined finding is not evidence either
+	// way when computing rule precision.
+	Verdict      Judgement `json:"verdict,omitempty"`
+	VerdictWhy   string    `json:"verdictReason,omitempty"`
+	VerdictUntil string    `json:"verdictUntil,omitempty"`
+	VerdictFrom  string    `json:"verdictSource,omitempty"`
 }
 
 // Measure is one number at one point in time.

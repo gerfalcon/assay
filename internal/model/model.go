@@ -36,6 +36,15 @@ type Finding struct {
 	Message     string   `json:"message"`
 	Suggest     string   `json:"suggest,omitempty"`
 	Fingerprint string   `json:"fingerprint"`
+
+	// Verdict is a human judgement resolved from an in-code annotation or
+	// project config. Empty means nobody has looked at it yet — which is
+	// different from "accepted", and the distinction matters when computing
+	// rule precision: an unjudged finding is not evidence either way.
+	Verdict      string `json:"verdict,omitempty"`
+	VerdictWhy   string `json:"verdictReason,omitempty"`
+	VerdictUntil string `json:"verdictUntil,omitempty"`
+	VerdictFrom  string `json:"verdictSource,omitempty"`
 }
 
 // Fingerprint identifies a finding across edits that move it around.

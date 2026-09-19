@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sherzing/assay/internal/model"
+	"github.com/sherzing/assay/internal/verdict"
 )
 
 // Rule identifiers. Stable strings — they end up in baselines checked into git,
@@ -52,7 +53,11 @@ type smellPass struct {
 	// comma-ok form or a type switch, so the naked-assertion rule can skip them.
 	safeAsserts map[token.Pos]bool
 	// nolint holds lines the author has explicitly excused.
-	nolint  map[int]bool
+	nolint map[int]bool
+	// verdicts holds quality: annotations by line.
+	verdicts map[int]verdict.V
+	// config carries pattern-matched judgements from project config.
+	config  verdict.Config
 	fnStack []string
 }
 
@@ -109,7 +114,17 @@ func (p *smellPass) add(rule string, n ast.Node, msg, suggest string) {
 		return
 	}
 	fn := p.currentFunc()
-	p.findings = append(p.findings, model.Finding{
+
+	// Resolve a judgement. An in-code annotation beats project config: it is
+	// more specific, and someone wrote it while looking at this exact code.
+	var v verdict.V
+	var judged bool
+	if vv, ok := p.verdicts[pos.Line]; ok {
+		v, judged = vv, true
+	} else if vv, ok := p.config.Match(rule, p.relPath); ok {
+		v, judged = vv, true
+	}
+	f := model.Finding{
 		Rule:        rule,
 		Severity:    Rules[rule].Severity,
 		File:        p.relPath,
@@ -119,7 +134,14 @@ func (p *smellPass) add(rule string, n ast.Node, msg, suggest string) {
 		Message:     msg,
 		Suggest:     suggest,
 		Fingerprint: model.Fingerprint(p.relPath, rule, fn, p.snippet(n)),
-	})
+	}
+	if judged {
+		f.Verdict, f.VerdictWhy, f.VerdictFrom = string(v.Verdict), v.Reason, v.Source
+		if !v.Until.IsZero() {
+			f.VerdictUntil = v.Until.Format("2006-01-02")
+		}
+	}
+	p.findings = append(p.findings, f)
 }
 
 // collectSafeAsserts pre-walks the file to record every type assertion that is
@@ -154,6 +176,7 @@ func (p *smellPass) collectSafeAsserts() {
 func (p *smellPass) run() []model.Finding {
 	p.collectSafeAsserts()
 	p.collectNolint()
+	p.verdicts = verdict.FromComments(p.fset, p.file)
 
 	var visit func(ast.Node) bool
 	visit = func(n ast.Node) bool {

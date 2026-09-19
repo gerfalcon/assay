@@ -6,6 +6,8 @@
 package analyze
 
 import (
+	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -16,7 +18,10 @@ import (
 	"strings"
 
 	"github.com/sherzing/assay/internal/model"
+	"github.com/sherzing/assay/internal/verdict"
 )
+
+func schemaJudgement(s string) schemaJ { return schemaJ(s) }
 
 // Options controls a scan.
 type Options struct {
@@ -34,6 +39,97 @@ type Options struct {
 	// Detail emits per-function records. Off for history replay, where only
 	// the summary is kept.
 	Detail bool
+	// Config carries pattern-matched verdicts from project config.
+	Config verdict.Config
+}
+
+// LoadConfig reads project-level verdicts.
+//
+// Neutral filename on purpose, same reasoning as the comment marker: another
+// tool should be able to read this file and honour the same decisions.
+// Tries .quality.yaml, .quality.yml, then .quality.json.
+func LoadConfig(root string) (verdict.Config, error) {
+	var cfg verdict.Config
+	for _, name := range []string{".quality.yaml", ".quality.yml", ".quality.json"} {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			continue
+		}
+		if strings.HasSuffix(name, ".json") {
+			if err := json.Unmarshal(data, &cfg); err != nil {
+				return cfg, fmt.Errorf("%s: %w", name, err)
+			}
+		} else {
+			parsed, err := parseMinimalYAML(data)
+			if err != nil {
+				return cfg, fmt.Errorf("%s: %w", name, err)
+			}
+			cfg = parsed
+		}
+		if errs := cfg.Validate(); len(errs) > 0 {
+			return cfg, fmt.Errorf("%s: %v", name, errs[0])
+		}
+		return cfg, nil
+	}
+	return cfg, nil
+}
+
+// parseMinimalYAML reads the small subset this config needs.
+//
+// Hand-rolled to keep the dependency count at zero. That is a real constraint
+// here: a quality tool that drags in a YAML library is one more thing to audit,
+// and the schema is six keys. If it ever needs anchors or nesting, take the
+// dependency rather than growing this.
+func parseMinimalYAML(data []byte) (verdict.Config, error) {
+	var cfg verdict.Config
+	var cur *verdict.Rule
+	inList := false
+
+	for i, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimRight(raw, " \t\r")
+		if t := strings.TrimSpace(line); t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "verdicts:") {
+			inList = true
+			continue
+		}
+		if !inList {
+			continue
+		}
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "- ") {
+			cfg.Verdicts = append(cfg.Verdicts, verdict.Rule{})
+			cur = &cfg.Verdicts[len(cfg.Verdicts)-1]
+			t = strings.TrimSpace(t[2:])
+			if t == "" {
+				continue
+			}
+		}
+		if cur == nil {
+			continue
+		}
+		k, v, ok := strings.Cut(t, ":")
+		if !ok {
+			return cfg, fmt.Errorf("line %d: expected key: value, got %q", i+1, t)
+		}
+		v = strings.Trim(strings.TrimSpace(v), `"'`)
+		switch strings.TrimSpace(k) {
+		case "rule":
+			cur.Rule = v
+		case "path":
+			cur.Path = v
+		case "verdict":
+			cur.Verdict = schemaJudgement(v)
+		case "reason":
+			cur.Reason = v
+		case "until":
+			cur.Until = v
+		default:
+			return cfg, fmt.Errorf("line %d: unknown key %q", i+1, strings.TrimSpace(k))
+		}
+	}
+	return cfg, nil
 }
 
 var defaultSkip = map[string]bool{
@@ -138,6 +234,7 @@ func scanFile(fset *token.FileSet, root, path string, opt Options) ([]model.Find
 		isTest:  strings.HasSuffix(path, "_test.go"),
 		isMain:  f.Name != nil && f.Name.Name == "main",
 		enabled: opt.Enabled,
+		config:  opt.Config,
 	}
 	return p.run(), funcMetrics(fset, f, rel), true
 }
