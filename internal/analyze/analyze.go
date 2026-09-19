@@ -42,21 +42,15 @@ var defaultSkip = map[string]bool{
 }
 
 // Scan analyses every Go file under root.
+//
+// Orchestration only: decide which files to visit, hand each to scanFile, sort.
+// The per-file work lives in scanFile because assay flagged this function at
+// cognitive 41 — the worst in its own codebase — and it was right.
 func Scan(root string, opt Options) (*model.Report, error) {
 	rep := &model.Report{Root: root, Findings: []model.Finding{}}
 	fset := token.NewFileSet()
+	skip := skipSet(opt)
 	files := 0
-
-	skip := map[string]bool{}
-	for k, v := range defaultSkip {
-		skip[k] = v
-	}
-	if opt.IncludeVendor {
-		delete(skip, "vendor")
-	}
-	for _, d := range opt.SkipDirs {
-		skip[d] = true
-	}
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -68,76 +62,118 @@ func Scan(root string, opt Options) (*model.Report, error) {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") {
+		if !wanted(path, opt) {
 			return nil
 		}
-		isTest := strings.HasSuffix(path, "_test.go")
-		if isTest && !opt.IncludeTests {
-			return nil
-		}
-
-		src, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-		// Generated files are machine output. Measuring them tells us about a
-		// generator, not about anyone's design decisions.
-		if isGenerated(src) {
-			return nil
-		}
-
-		f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
-		if err != nil {
-			// A file that does not parse is skipped rather than fatal: during
-			// history replay we will meet plenty of broken intermediate states.
+		fnd, fns, ok := scanFile(fset, root, path, opt)
+		if !ok {
 			return nil
 		}
 		files++
-
-		rel, rerr := filepath.Rel(root, path)
-		if rerr != nil {
-			rel = path
-		}
-
-		p := &smellPass{
-			fset: fset, file: f, relPath: rel, src: src,
-			isTest: isTest, isMain: f.Name != nil && f.Name.Name == "main",
-			enabled: opt.Enabled,
-		}
-		rep.Findings = append(rep.Findings, p.run()...)
-
-		for _, decl := range f.Decls {
-			fd, ok := decl.(*ast.FuncDecl)
-			if !ok || fd.Body == nil {
-				continue
-			}
-			pos := fset.Position(fd.Pos())
-			fm := model.FuncMetrics{
-				Name:       fd.Name.Name,
-				File:       rel,
-				Line:       pos.Line,
-				Exported:   fd.Name.IsExported(),
-				Cyclomatic: cyclomatic(fd),
-				Cognitive:  cognitive(fd),
-				MaxNesting: maxNesting(fd),
-				Statements: countStatements(fd.Body),
-				Params:     fieldCount(fd.Type.Params),
-				Results:    fieldCount(fd.Type.Results),
-			}
-			if fd.Recv != nil && len(fd.Recv.List) > 0 {
-				fm.Recv = recvTypeName(fd.Recv.List[0].Type)
-			}
-			rep.Funcs = append(rep.Funcs, fm)
-		}
+		rep.Findings = append(rep.Findings, fnd...)
+		rep.Funcs = append(rep.Funcs, fns...)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Deterministic ordering. Without this the JSON churns between runs on
-	// filesystem iteration order alone, which would make every diff unreadable
-	// and every baseline comparison noisy.
+	sortReport(rep)
+	rep.Summarise(files)
+	if !opt.Detail {
+		rep.Funcs = nil
+	}
+	return rep, nil
+}
+
+// skipSet builds the directory-name blocklist for this scan.
+func skipSet(opt Options) map[string]bool {
+	skip := map[string]bool{}
+	for k, v := range defaultSkip {
+		skip[k] = v
+	}
+	if opt.IncludeVendor {
+		delete(skip, "vendor")
+	}
+	for _, d := range opt.SkipDirs {
+		skip[d] = true
+	}
+	return skip
+}
+
+// wanted reports whether a path is a Go file we should measure.
+func wanted(path string, opt Options) bool {
+	if !strings.HasSuffix(path, ".go") {
+		return false
+	}
+	return opt.IncludeTests || !strings.HasSuffix(path, "_test.go")
+}
+
+// scanFile measures one file. ok is false when the file should not count
+// towards the file total — unreadable, generated, or unparseable.
+func scanFile(fset *token.FileSet, root, path string, opt Options) ([]model.Finding, []model.FuncMetrics, bool) {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, false
+	}
+	// Generated files are machine output. Measuring them tells us about a
+	// generator, not about anyone's design decisions.
+	if isGenerated(src) {
+		return nil, nil, false
+	}
+	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	if err != nil {
+		// Not fatal: during history replay we meet plenty of broken
+		// intermediate states, and one bad commit should not abort the run.
+		return nil, nil, false
+	}
+
+	rel, rerr := filepath.Rel(root, path)
+	if rerr != nil {
+		rel = path
+	}
+
+	p := &smellPass{
+		fset: fset, file: f, relPath: rel, src: src,
+		isTest:  strings.HasSuffix(path, "_test.go"),
+		isMain:  f.Name != nil && f.Name.Name == "main",
+		enabled: opt.Enabled,
+	}
+	return p.run(), funcMetrics(fset, f, rel), true
+}
+
+// funcMetrics extracts the per-function record for every function with a body.
+func funcMetrics(fset *token.FileSet, f *ast.File, rel string) []model.FuncMetrics {
+	var out []model.FuncMetrics
+	for _, decl := range f.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || fd.Body == nil {
+			continue
+		}
+		fm := model.FuncMetrics{
+			Name:       fd.Name.Name,
+			File:       rel,
+			Line:       fset.Position(fd.Pos()).Line,
+			Exported:   fd.Name.IsExported(),
+			Cyclomatic: cyclomatic(fd),
+			Cognitive:  cognitive(fd),
+			MaxNesting: maxNesting(fd),
+			Statements: countStatements(fd.Body),
+			Params:     fieldCount(fd.Type.Params),
+			Results:    fieldCount(fd.Type.Results),
+		}
+		if fd.Recv != nil && len(fd.Recv.List) > 0 {
+			fm.Recv = recvTypeName(fd.Recv.List[0].Type)
+		}
+		out = append(out, fm)
+	}
+	return out
+}
+
+// sortReport imposes a deterministic order. Without it the JSON churns between
+// runs on filesystem iteration order alone, making every diff unreadable and
+// every baseline comparison noisy.
+func sortReport(rep *model.Report) {
 	sort.Slice(rep.Funcs, func(i, j int) bool {
 		if rep.Funcs[i].File != rep.Funcs[j].File {
 			return rep.Funcs[i].File < rep.Funcs[j].File
@@ -154,12 +190,6 @@ func Scan(root string, opt Options) (*model.Report, error) {
 		}
 		return a.Rule < b.Rule
 	})
-
-	rep.Summarise(files)
-	if !opt.Detail {
-		rep.Funcs = nil
-	}
-	return rep, nil
 }
 
 // isGenerated applies the convention from https://go.dev/s/generatedcode.

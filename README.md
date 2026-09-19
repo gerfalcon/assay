@@ -38,15 +38,26 @@ implementation — a conforming tool in any language composes with these.
 
 | | |
 |---|---|
-| **`ratchet`** | the gate. `scan`, `import` (SARIF from any linter), `check` |
-| **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts` |
+| **`ratchet`** | the gate. `scan`, `import` (SARIF from any linter), `check`, `history` |
+| **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat` |
+| **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare` |
 | **`rulebook`** | *(not built)* rules + verdicts + measured precision |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
 
-There is deliberately **no web UI**. Grafana over the rollups, or a static site
-from JSONL, covers it. Revisit only if its absence becomes a real complaint.
+There is deliberately **no web UI**. `lens` covers reading the data from a
+terminal; Grafana over the rollups or a static site from JSONL covers the rest.
+
+```
+$ lens trend --metric cplx.per_kloc --period month
+service-c  ▅▇▇█▇▇▆▇▇▇▆▆▆▆▆▅▅▄▄▄▄▄▄▄▃▃▂▂▃▂▁▂▁▁▁▁▁▁▁▁▂▁▂▂▂▂▁▁▁▂▁▂▂▁▂▂▂▃▄▄▅▅▅  49.37 → 49.00
+               2021-05-01 → 2026-07-01  (63 points)
+```
+
+**Full guide: [docs/USAGE.md](docs/USAGE.md)** — CI gating, SARIF from other
+languages, where rules live, writing rules that are worth having, keeping
+history, and which external tools to reach for.
 
 ## The verdict split is the point
 
@@ -108,7 +119,30 @@ with function-level detail lands in the low hundreds of MB.
 ```sh
 go install github.com/sherzing/assay/cmd/ratchet@latest
 go install github.com/sherzing/assay/cmd/strata@latest
+go install github.com/sherzing/assay/cmd/lens@latest
 ```
 
 Single Go module, one binary per `cmd/` — install only what you want. The shared
 packages are an implementation convenience; the interop contract is the JSONL.
+
+## It measures itself
+
+assay runs on assay. The first self-scan put `Scan` at cognitive **41** — the
+worst function in its own codebase — and `emitAssay`, written the same day, at
+**28**. Both were genuinely doing too much.
+
+Splitting them moved the codebase:
+
+| | before | after |
+|---|---|---|
+| cognitive max | 41 | **27** |
+| cognitive mean | 5.76 | **5.08** |
+| cyclomatic max | 25 | **17** |
+| nesting max | 4 | **3** |
+| findings | 5 | **3** |
+
+The two fewer findings were not the goal — they fell out of the restructure,
+because the error paths that had been swallowed inside a walk closure became
+honest return values once the function was split.
+
+If it cannot hold its own line, it has no standing to hold anyone else's.

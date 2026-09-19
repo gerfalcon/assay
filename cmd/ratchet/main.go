@@ -191,9 +191,8 @@ func mustAbs(p string) string {
 
 // emitAssay writes assay JSONL records so ratchet composes with strata.
 //
-// The measure record carries scope, so project rollups and file-level hotspots
-// travel on the same stream and a consumer filters rather than parsing two
-// different shapes.
+// Split into per-kind helpers after assay flagged this at cognitive 28 — second
+// worst in its own codebase, and freshly written. Dogfooding works.
 func emitAssay(rep *model.Report, kind, repo, commit string) error {
 	enc := schema.NewEncoder(os.Stdout)
 	defer enc.Flush()
@@ -201,68 +200,97 @@ func emitAssay(rep *model.Report, kind, repo, commit string) error {
 
 	switch kind {
 	case "measures":
-		put := func(scope schema.Scope, path, metric string, v float64) error {
-			return enc.Write(&schema.Measure{
-				Repo: repo, Commit: commit, TS: now,
-				Scope: scope, Path: path, Metric: metric, Value: v,
-			})
-		}
-		s := rep.Summary
-		proj := map[string]float64{
-			"files": float64(s.Files), "funcs": float64(s.Funcs), "statements": float64(s.Statements),
-			"cyclomatic.p50": float64(s.Cyclomatic.P50), "cyclomatic.p90": float64(s.Cyclomatic.P90),
-			"cyclomatic.max": float64(s.Cyclomatic.Max), "cyclomatic.mean": s.Cyclomatic.Mean,
-			"cognitive.p50": float64(s.Cognitive.P50), "cognitive.p90": float64(s.Cognitive.P90),
-			"cognitive.max": float64(s.Cognitive.Max), "cognitive.mean": s.Cognitive.Mean,
-			"nesting.max":    float64(s.MaxNesting.Max),
-			"findings.total": float64(s.FindingsTotal),
-		}
-		for _, k := range sortedKeys(proj) {
-			if err := put(schema.ScopeProject, "", k, proj[k]); err != nil {
-				return err
-			}
-		}
-		for rule, n := range s.FindingsByRule {
-			if err := put(schema.ScopeProject, "", "findings.rule."+rule, float64(n)); err != nil {
-				return err
-			}
-		}
-		for _, f := range rep.Funcs {
-			name := f.Name
-			if f.Recv != "" {
-				name = f.Recv + "." + f.Name
-			}
-			p := f.File + ":" + name
-			for _, kv := range []struct {
-				m string
-				v float64
-			}{
-				{"cyclomatic", float64(f.Cyclomatic)},
-				{"cognitive", float64(f.Cognitive)},
-				{"nesting", float64(f.MaxNesting)},
-				{"statements", float64(f.Statements)},
-			} {
-				if err := put(schema.ScopeFunction, p, kv.m, kv.v); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-
+		return emitMeasures(enc, rep, repo, commit, now)
 	case "findings":
-		for _, f := range rep.Findings {
-			if err := enc.Write(&schema.Finding{
-				Repo: repo, Commit: commit, TS: now, Tool: "ratchet",
-				Rule: f.Rule, Severity: schema.Severity(f.Severity),
-				File: f.File, Line: f.Line, Col: f.Col, Symbol: f.Func,
-				Message: f.Message, Suggest: f.Suggest, Fingerprint: f.Fingerprint,
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
+		return emitFindings(enc, rep, repo, commit, now)
 	}
 	return fmt.Errorf("unknown --emit %q (want measures|findings)", kind)
+}
+
+// projectMetrics flattens the summary into the metric names strata will key on.
+func projectMetrics(s model.Summary) map[string]float64 {
+	return map[string]float64{
+		"files": float64(s.Files), "funcs": float64(s.Funcs), "statements": float64(s.Statements),
+		"cyclomatic.p50": float64(s.Cyclomatic.P50), "cyclomatic.p90": float64(s.Cyclomatic.P90),
+		"cyclomatic.max": float64(s.Cyclomatic.Max), "cyclomatic.mean": s.Cyclomatic.Mean,
+		"cognitive.p50": float64(s.Cognitive.P50), "cognitive.p90": float64(s.Cognitive.P90),
+		"cognitive.max": float64(s.Cognitive.Max), "cognitive.mean": s.Cognitive.Mean,
+		"nesting.max":    float64(s.MaxNesting.Max),
+		"findings.total": float64(s.FindingsTotal),
+	}
+}
+
+// funcMetricValues is the per-function set. Named so adding a metric is a
+// one-line change in one place.
+func funcMetricValues(f model.FuncMetrics) map[string]float64 {
+	return map[string]float64{
+		"cyclomatic": float64(f.Cyclomatic),
+		"cognitive":  float64(f.Cognitive),
+		"nesting":    float64(f.MaxNesting),
+		"statements": float64(f.Statements),
+	}
+}
+
+func emitMeasures(enc *schema.Encoder, rep *model.Report, repo, commit string, now time.Time) error {
+	put := func(scope schema.Scope, path, metric string, v float64) error {
+		return enc.Write(&schema.Measure{
+			Repo: repo, Commit: commit, TS: now,
+			Scope: scope, Path: path, Metric: metric, Value: v,
+		})
+	}
+
+	proj := projectMetrics(rep.Summary)
+	for _, k := range sortedKeys(proj) {
+		if err := put(schema.ScopeProject, "", k, proj[k]); err != nil {
+			return err
+		}
+	}
+	for _, rule := range sortedCountKeys(rep.Summary.FindingsByRule) {
+		if err := put(schema.ScopeProject, "", "findings.rule."+rule,
+			float64(rep.Summary.FindingsByRule[rule])); err != nil {
+			return err
+		}
+	}
+	for _, f := range rep.Funcs {
+		path := f.File + ":" + qualified(f)
+		m := funcMetricValues(f)
+		for _, k := range sortedKeys(m) {
+			if err := put(schema.ScopeFunction, path, k, m[k]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func emitFindings(enc *schema.Encoder, rep *model.Report, repo, commit string, now time.Time) error {
+	for _, f := range rep.Findings {
+		if err := enc.Write(&schema.Finding{
+			Repo: repo, Commit: commit, TS: now, Tool: "ratchet",
+			Rule: f.Rule, Severity: schema.Severity(f.Severity),
+			File: f.File, Line: f.Line, Col: f.Col, Symbol: f.Func,
+			Message: f.Message, Suggest: f.Suggest, Fingerprint: f.Fingerprint,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func qualified(f model.FuncMetrics) string {
+	if f.Recv != "" {
+		return f.Recv + "." + f.Name
+	}
+	return f.Name
+}
+
+func sortedCountKeys(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func sortedKeys(m map[string]float64) []string {
