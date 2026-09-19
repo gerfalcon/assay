@@ -35,8 +35,31 @@ To move from `org/` to `core/`:
 Check your standing:
 
 ```sh
-strata precision --rule my-rule
+strata precision --rule my-rule                 # your own evidence
+strata promote-check --evidence evidence/       # against the whole corpus
 ```
+
+```
+no-context-todo                PROMOTE
+                                 2 orgs · 63 judged · 4 repos · precision 0.92
+
+new-idea                       not yet
+                                 ✗ needs 1 more organisations (has 1, wants 2)
+                                 ✗ needs 37 more judged findings (has 13, wants 50)
+                                 ✗ needs 2 more repositories (has 1, wants 3)
+```
+
+It names the gap rather than just failing, so you know what is still missing.
+
+**Rules can lose.** A rule with enough evidence to conclude and precision below
+the bar gets `REJECT`, not `not yet` — 73 judged findings at 25% precision is a
+conclusion, not a shortage of data. Withdraw it, or fix it and start the evidence
+again. Without that outcome a corpus only ever grows and its average quality only
+ever falls, which is how every rule catalogue ends up ignored.
+
+Precision is **recomputed from summed counts**, never averaged across
+contributors. Averaging would let a small contributor with a lucky 1.00 drag up a
+rule that is mostly wrong everywhere else.
 
 **Carriage is not a failure.** A rule where most confirmed findings are *carried*
 rather than fixed is still a good rule — it is pointing at something real that

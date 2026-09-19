@@ -50,6 +50,8 @@ func main() {
 		err = cmdExport(os.Args[2:])
 	case "verify":
 		err = cmdVerify(os.Args[2:])
+	case "promote-check":
+		err = cmdPromoteCheck(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("strata", version)
 	case "help", "-h", "--help":
@@ -77,6 +79,7 @@ usage:
   strata precision [--store DIR] [--rule R] [--min-judged N]
   strata export   --org NAME [--period YYYY-Qn] [--min-judged 10]
   strata verify   <file.jsonl>
+  strata promote-check [--evidence DIR | --store DIR] [--rule R]
 
 dates are YYYY-MM-DD. default store is .assay
 everything reads and writes JSONL, so it composes:
@@ -543,4 +546,134 @@ func cmdVerify(args []string) error {
 		os.Exit(1)
 	}
 	return nil
+}
+
+// cmdPromoteCheck answers whether a rule has earned its place in the core pack.
+//
+// Reads the shared evidence corpus by default, because promotion is a question
+// about what many organisations have found, not about what one has. Falls back
+// to the local store so a contributor can see their own standing.
+func cmdPromoteCheck(args []string) error {
+	fs := flag.NewFlagSet("promote-check", flag.ExitOnError)
+	evDir := fs.String("evidence", "", "directory of submitted evidence files")
+	dir := storeFlag(fs)
+	rule := fs.String("rule", "", "check one rule")
+	org := fs.String("org", "", "org label when reading the local store")
+	strict := fs.Bool("strict", false, "exit non-zero unless every checked rule is promotable")
+	asJSON := fs.Bool("json", false, "emit JSON")
+	fs.Parse(args)
+
+	var recs []evidence.Record
+	source := ""
+	switch {
+	case *evDir != "":
+		var errs []error
+		recs, errs = evidence.LoadDir(*evDir)
+		for _, e := range errs {
+			fmt.Fprintf(os.Stderr, "warning: %v\n", e)
+		}
+		source = fmt.Sprintf("%d records from %s", len(recs), *evDir)
+	default:
+		s, err := store.Open(*dir)
+		if err != nil {
+			return err
+		}
+		rows, err := s.Precision()
+		if err != nil {
+			return err
+		}
+		o := *org
+		if o == "" {
+			o = "local"
+		}
+		// MinJudged 1 here: the point is to show standing, including for rules
+		// that are nowhere near the bar yet.
+		recs, _, err = evidence.Build(rows, evidence.Options{Org: o, MinJudged: 1})
+		if err != nil {
+			return err
+		}
+		source = fmt.Sprintf("local store %s (one organisation — the multi-org bar cannot be met from here)", *dir)
+	}
+	if len(recs) == 0 {
+		fmt.Println("no evidence found")
+		return nil
+	}
+
+	t := evidence.DefaultThresholds()
+	corpora := evidence.Aggregate(recs)
+	names := make([]string, 0, len(corpora))
+	for n := range corpora {
+		if *rule != "" && n != *rule {
+			continue
+		}
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	var assessments []evidence.Assessment
+	for _, n := range names {
+		assessments = append(assessments, evidence.Assess(*corpora[n], t))
+	}
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(assessments)
+	}
+
+	fmt.Printf("source: %s\n", source)
+	fmt.Printf("bar: >=%d orgs, >=%d judged, >=%d repos, precision >=%.2f\n\n",
+		t.MinOrgs, t.MinJudged, t.MinRepos, t.MinPrecision)
+
+	blocked := 0
+	for _, a := range assessments {
+		c := a.Corpus
+		mark := map[evidence.Outcome]string{
+			evidence.Promote:              "PROMOTE",
+			evidence.PromoteInformational: "PROMOTE (informational)",
+			evidence.NotYet:               "not yet",
+			evidence.Reject:               "REJECT",
+		}[a.Outcome]
+		if a.Outcome != evidence.Promote && a.Outcome != evidence.PromoteInformational {
+			blocked++
+		}
+
+		fmt.Printf("%-30s %s\n", trunc(c.Rule, 30), mark)
+		fmt.Printf("%-30s   %d orgs · %d judged · %d repos · precision %.2f · carriage %.0f%%\n",
+			"", len(c.Orgs), c.Judged, c.Repos, c.Precision, c.Carriage*100)
+		for _, u := range a.Unmet {
+			fmt.Printf("%-30s   ✗ %s\n", "", u)
+		}
+		for _, n := range a.Notes {
+			fmt.Printf("%-30s   → %s\n", "", wrapAt(n, 74, 35))
+		}
+		fmt.Println()
+	}
+	if *strict && blocked > 0 {
+		os.Exit(1)
+	}
+	return nil
+}
+
+// wrapAt keeps long guidance readable in a terminal without a dependency.
+func wrapAt(s string, width, indent int) string {
+	words := strings.Fields(s)
+	var lines []string
+	cur := ""
+	for _, w := range words {
+		if cur != "" && len(cur)+1+len(w) > width {
+			lines = append(lines, cur)
+			cur = w
+			continue
+		}
+		if cur == "" {
+			cur = w
+		} else {
+			cur += " " + w
+		}
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	return strings.Join(lines, "\n"+strings.Repeat(" ", indent)+"  ")
 }
