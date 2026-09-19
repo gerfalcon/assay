@@ -46,6 +46,8 @@ func main() {
 		err = cmdDiff(os.Args[2:])
 	case "compare":
 		err = cmdCompare(os.Args[2:])
+	case "calibrate":
+		err = cmdCalibrate(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("lens", version)
 	case "help", "-h", "--help":
@@ -69,6 +71,7 @@ usage:
   lens trend   [--metric M] [--repo R] [--period week]          sparkline over time
   lens diff    --since DATE [--metric M] [--repo R]             what changed
   lens compare [--metric M] [--scope project]                   repos side by side
+  lens calibrate [--store DIR]                                  derive bands from your own code
 
 input: JSONL on stdin, or --store DIR to read a strata store
 
@@ -193,7 +196,7 @@ func cmdTop(args []string) error {
 		if *plain {
 			continue
 		}
-		verdict, action := classify(*metric, m.Value)
+		verdict, action := classify(*metric, m.Path, m.Value)
 		var notes []string
 		if verdict != "" {
 			notes = append(notes, verdict)
@@ -282,7 +285,7 @@ func cmdTrend(args []string) error {
 		}
 		if !*plain {
 			fmt.Printf("%-16s ↳ %s\n", "", trendVerdict(vals))
-			if v, _ := classify(*metric, last); v != "" {
+			if v, _ := classify(*metric, "", last); v != "" {
 				fmt.Printf("%-16s ↳ current value is %q by the usual thresholds\n", "", v)
 			}
 		}
@@ -583,32 +586,86 @@ type band struct {
 	action string
 }
 
-var bands = map[string][]band{
-	"cognitive": {
-		{5, "fine", ""},
-		{15, "readable", ""},
-		{25, "worth a look", "read it; if you cannot hold it in your head, split it"},
-		{1e9, "go fix this", "extract the nested branches into named functions"},
+// Bands are PERCENTILES OF REAL CODE, not folklore.
+//
+// The Go set is derived from 3,053 functions across two production services
+// (service-a, 5 years; service-b, 3 months). The two distributions agree closely,
+// which is what makes them usable as a default:
+//
+//	             p50   p90   p99   max
+//	cognitive      1     5    15    37
+//	cyclomatic     2     6    12    31
+//	nesting        1     2     3     6
+//
+// So "elevated" starts at p90 — the top tenth — and "outlier" at p99. A function
+// over the p99 line is in the worst 1% of code we have measured, which is a
+// defensible reason to send someone to look at it.
+//
+// These are a starting point, not a law. Two supervised Go services is not all of
+// Go. Run `lens calibrate --store .assay` to derive bands from your own corpus;
+// that is strictly better than anything shipped here.
+var bandsByLang = map[string]map[string][]band{
+	"go": {
+		"cognitive": {
+			{6, "typical", ""},
+			{16, "elevated", "read it; if you cannot hold it in your head, split it"},
+			{1e9, "outlier (worst 1%)", "extract the nested branches into named functions"},
+		},
+		"cyclomatic": {
+			{7, "typical", ""},
+			{13, "elevated", "check the tests cover each branch"},
+			{1e9, "outlier (worst 1%)", "too many paths to test honestly; decompose"},
+		},
+		"nesting": {
+			{3, "typical", ""},
+			{4, "elevated", "invert conditions and return early"},
+			{1e9, "outlier (worst 1%)", "invert conditions and return early"},
+		},
 	},
-	"cyclomatic": {
-		{10, "fine", ""},
-		{20, "busy", "check the tests cover each branch"},
-		{1e9, "go fix this", "too many paths to test honestly; decompose"},
-	},
-	"nesting": {
-		{3, "fine", ""},
-		{5, "deep", "invert conditions and return early"},
-		{1e9, "go fix this", "invert conditions and return early"},
+	// Fallback for languages we have not calibrated. Conventional thresholds,
+	// deliberately looser, because guessing tight is worse than guessing loose:
+	// a noisy band trains people to ignore the column.
+	"": {
+		"cognitive": {
+			{15, "typical", ""},
+			{25, "elevated", "read it; if you cannot hold it in your head, split it"},
+			{1e9, "high", "extract the nested branches into named functions"},
+		},
+		"cyclomatic": {
+			{10, "typical", ""},
+			{20, "elevated", "check the tests cover each branch"},
+			{1e9, "high", "too many paths to test honestly; decompose"},
+		},
+		"nesting": {
+			{4, "typical", ""},
+			{6, "elevated", "invert conditions and return early"},
+			{1e9, "high", "invert conditions and return early"},
+		},
 	},
 }
 
-// classify returns a label and a suggested action for a metric value.
-func classify(metric string, v float64) (string, string) {
+// langOf guesses the language from a measured path, so a Go function is judged
+// against Go norms and a C# one is not.
+func langOf(path string) string {
+	switch {
+	case strings.Contains(path, ".go:"), strings.HasSuffix(path, ".go"):
+		return "go"
+	}
+	return ""
+}
+
+// classify returns a label and a suggested action for a metric value, judged
+// against the norms of the language it came from.
+func classify(metric, path string, v float64) (string, string) {
 	base := metric
 	if i := strings.IndexByte(base, '.'); i > 0 {
 		base = base[:i] // cognitive.p90 -> cognitive
 	}
-	bs, ok := bands[base]
+	set, ok := bandsByLang[langOf(path)]
+	if !ok {
+		set = bandsByLang[""]
+	}
+	bs, ok := set[base]
 	if !ok {
 		return "", ""
 	}
@@ -680,4 +737,83 @@ func trendVerdict(vals []float64) string {
 		return "stable — no action needed"
 	}
 	return fmt.Sprintf("drifting: %+.0f%% overall, %+.0f%% recently", overall, recent)
+}
+
+// ---------- calibrate ----------
+
+// cmdCalibrate derives bands from the user's own corpus.
+//
+// Shipped defaults come from two Go services. That is a reasonable starting
+// point and a poor universal truth. A team with their own history can do better
+// in one command, and a band grounded in your codebase is far easier to defend
+// in review than a number someone read in a book.
+func cmdCalibrate(args []string) error {
+	fs := flag.NewFlagSet("calibrate", flag.ExitOnError)
+	dir, repo, _, _ := inputFlags(fs)
+	lang := fs.String("lang", "", "label the output with this language")
+	fs.Parse(args)
+
+	ms, err := read(*dir, store.Query{Repo: *repo, Scope: schema.ScopeFunction})
+	if err != nil {
+		return err
+	}
+	byMetric := map[string][]float64{}
+	repos := map[string]bool{}
+	for _, m := range ms {
+		if m.Scope != schema.ScopeFunction {
+			continue
+		}
+		if *repo != "" && m.Repo != *repo {
+			continue
+		}
+		byMetric[m.Metric] = append(byMetric[m.Metric], m.Value)
+		repos[m.Repo] = true
+	}
+	if len(byMetric) == 0 {
+		return fmt.Errorf("no function-scope measures found")
+	}
+
+	fmt.Printf("calibrated from %d repos: %s\n\n", len(repos), strings.Join(sortedKeys(repos), ", "))
+	fmt.Printf("%-12s %8s %6s %6s %6s %6s %7s\n", "metric", "n", "p50", "p75", "p90", "p99", "max")
+	for _, mt := range sortedKeys(byMetric) {
+		v := byMetric[mt]
+		sort.Float64s(v)
+		fmt.Printf("%-12s %8d %6s %6s %6s %6s %7s\n", mt, len(v),
+			num(q(v, .50)), num(q(v, .75)), num(q(v, .90)), num(q(v, .99)), num(v[len(v)-1]))
+	}
+
+	fmt.Printf("\nproposed bands — typical below p90, elevated below p99, outlier above:\n\n")
+	label := *lang
+	if label == "" {
+		label = "yourlang"
+	}
+	fmt.Printf("\t%q: {\n", label)
+	for _, mt := range sortedKeys(byMetric) {
+		if _, known := bandsByLang["go"][mt]; !known {
+			continue // only emit bands for metrics we know how to act on
+		}
+		v := byMetric[mt]
+		sort.Float64s(v)
+		fmt.Printf("\t\t%q: {{%.0f, \"typical\", \"\"}, {%.0f, \"elevated\", \"…\"}, {1e9, \"outlier\", \"…\"}},\n",
+			mt, q(v, .90)+1, q(v, .99)+1)
+	}
+	fmt.Printf("\t},\n")
+	fmt.Printf("\nPaste into bandsByLang in cmd/lens/main.go, or keep it as the number\n")
+	fmt.Printf("you quote in review. Sanity-check it: if p90 equals p99 your corpus\n")
+	fmt.Printf("is too small or too uniform to calibrate from.\n")
+	return nil
+}
+
+func q(sorted []float64, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	return sorted[min(int(p*float64(len(sorted)-1)), len(sorted)-1)]
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

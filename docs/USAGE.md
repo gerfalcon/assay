@@ -338,8 +338,34 @@ JSONL. There is deliberately no web UI here.
 
 ### What is a normal value?
 
-Conventional bands, not laws. They exist so a reader who has never seen a
-cognitive score knows whether 27 is fine.
+**Bands are percentiles of real code, not folklore.** The Go defaults come from
+**3,053 functions across two production services** — service-a (5 years) and
+service-b (3 months). The two distributions agree closely, which is what makes
+them usable as a default:
+
+| | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| cognitive | 1 | 5 | 15 | 37 |
+| cyclomatic | 2 | 6 | 12 | 31 |
+| nesting | 1 | 2 | 3 | 6 |
+
+So "elevated" starts at p90 and "outlier" at p99 — a function above that line is
+in the worst 1% of code we have measured, which is a defensible reason to send
+someone to look at it.
+
+**Calibrate against your own corpus instead.** One command, and strictly better
+than anything shipped here:
+
+```sh
+lens calibrate --store .assay --lang go
+```
+
+It prints your percentiles and a ready-to-paste band definition. If p90 equals
+p99, your corpus is too small or too uniform to calibrate from.
+
+Languages without a calibrated set fall back to conventional, deliberately
+looser thresholds — guessing tight is worse than guessing loose, because a noisy
+band trains people to ignore the column.
 
 | cognitive | meaning | what to do |
 |---|---|---|
