@@ -40,7 +40,8 @@ implementation — a conforming tool in any language composes with these.
 |---|---|
 | **`ratchet`** | the gate. `scan`, `import` (SARIF from any linter), `check`, `history` |
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat` |
-| **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare` |
+| **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
+| **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
 | **`rulebook`** | *(not built)* rules + verdicts + measured precision |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
@@ -94,6 +95,41 @@ from ≥2 organisations.
 contribute "47 findings, 41 confirmed, 6 false positives" for a rule without
 sharing a line of source. That is what lets closed-source teams participate in an
 open corpus.
+
+## Tickets that close themselves
+
+```sh
+ratchet scan . --emit findings --repo myservice | docket plan
+```
+```
+5 tickets covering 208 findings (grouped by theme)
+
+ 1. myservice: Fix 97 × any-in-exported-signature     97 findings
+ 2. myservice: Fix 90 × naked-type-assertion          90 findings
+ 3. myservice: Fix 16 × else-after-return             16 findings
+```
+
+**208 findings, 5 tickets.** Ninety naked type assertions is one ticket and one
+agent PR, not ninety tickets.
+
+Each ticket carries its cohort of fingerprints, so `docket sync` answers "how far
+along is this" by set arithmetic against a fresh scan — and closes the ticket
+when the cohort is clear:
+
+```
+T-002   Fix 90 × naked-type-assertion    47/90
+T-004   Fix 3 × panic-in-library          3/3  ✓ ready to close
+```
+
+**The ratchet is what makes this closeable.** A theme ticket would normally never
+finish, because new instances keep arriving. `ratchet check` blocks them, so the
+cohort is fixed at creation and the ticket has a finish line.
+
+Two refusals worth knowing: it will not ticket a finding marked `false-positive`
+(that is noise reaching a human — fix the rule instead), and it will not re-file
+something whose ticket someone closed. `--yes` is required to touch a tracker;
+without it everything is a preview. `--provider file` writes markdown and needs
+no tracker at all.
 
 ## Storage: files
 

@@ -32,6 +32,7 @@ const (
 	KindFinding Kind = "finding"
 	KindMeasure Kind = "measure"
 	KindVerdict Kind = "verdict"
+	KindTicket  Kind = "ticket"
 )
 
 // Scope is the granularity a measurement applies to. One shape for every level
@@ -123,11 +124,36 @@ type Verdict struct {
 	TS          time.Time `json:"ts"`
 }
 
+// Ticket links a cohort of findings to one external issue.
+//
+// The cohort is the whole design. A ticket for "all naked type assertions"
+// would normally never close, because new ones keep arriving — which is why
+// theme-level tickets usually rot. But `ratchet check` blocks new findings from
+// landing, so the set is FIXED at creation: "clean up the 90 that existed on
+// this date", and a 91st cannot appear. That is what gives the ticket a finish
+// line, and it is why Fingerprints is a snapshot rather than a live query.
+type Ticket struct {
+	V            int       `json:"v"`
+	Kind         Kind      `json:"kind"`
+	Provider     string    `json:"provider"`
+	ID           string    `json:"id"`
+	URL          string    `json:"url,omitempty"`
+	Repo         string    `json:"repo,omitempty"`
+	GroupBy      string    `json:"groupBy"`
+	Group        string    `json:"group"`
+	Title        string    `json:"title"`
+	Fingerprints []string  `json:"fingerprints"`
+	Resolved     []string  `json:"resolved,omitempty"`
+	State        string    `json:"state"`
+	TS           time.Time `json:"ts"`
+}
+
 // Record is a decoded line off a mixed stream. Exactly one field is non-nil.
 type Record struct {
 	Finding *Finding
 	Measure *Measure
 	Verdict *Verdict
+	Ticket  *Ticket
 }
 
 type kindProbe struct {
@@ -175,6 +201,11 @@ func Decode(r io.Reader, fn func(Record) error, onErr func(line int, err error))
 			if err = json.Unmarshal([]byte(line), &v); err == nil {
 				rec.Verdict = &v
 			}
+		case KindTicket:
+			var t Ticket
+			if err = json.Unmarshal([]byte(line), &t); err == nil {
+				rec.Ticket = &t
+			}
 		default:
 			continue // a kind from a newer tool; ignore rather than fail
 		}
@@ -212,6 +243,8 @@ func (e *Encoder) Write(v any) error {
 		t.V, t.Kind = Version, KindMeasure
 	case *Verdict:
 		t.V, t.Kind = Version, KindVerdict
+	case *Ticket:
+		t.V, t.Kind = Version, KindTicket
 	default:
 		return fmt.Errorf("schema: cannot encode %T", v)
 	}

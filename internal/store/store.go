@@ -42,7 +42,7 @@ func Open(root string) (*Store, error) {
 	if root == "" {
 		root = ".assay"
 	}
-	for _, d := range []string{"measures", "findings", "verdicts", "rollup"} {
+	for _, d := range []string{"measures", "findings", "verdicts", "tickets", "rollup"} {
 		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
 			return nil, err
 		}
@@ -260,6 +260,48 @@ func (s *Store) Verdicts() (map[string]schema.Verdict, error) {
 		return nil
 	}, nil)
 	return out, err
+}
+
+// Tickets reads the append-only ticket log. Callers resolve to current state
+// with docket.Latest; this returns raw history so the audit trail is available.
+func (s *Store) Tickets() ([]schema.Ticket, error) {
+	var out []schema.Ticket
+	f, err := os.Open(filepath.Join(s.Root, "tickets", "tickets.jsonl"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return out, nil
+		}
+		return nil, err
+	}
+	defer f.Close()
+	err = schema.Decode(f, func(rec schema.Record) error {
+		if rec.Ticket != nil {
+			out = append(out, *rec.Ticket)
+		}
+		return nil
+	}, nil)
+	return out, err
+}
+
+// AppendTicket records a ticket event. Append-only, like verdicts: a state
+// change is a new line rather than an edit, so the history of who ticketed and
+// closed what survives.
+func (s *Store) AppendTicket(t schema.Ticket) error {
+	dir := filepath.Join(s.Root, "tickets")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "tickets.jsonl"),
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := schema.NewEncoder(f)
+	if err := enc.Write(&t); err != nil {
+		return err
+	}
+	return enc.Flush()
 }
 
 // Bucket is one rolled-up period.

@@ -527,6 +527,80 @@ If it emits SARIF, `ratchet import` reads it: CodeQL, Trivy, ESLint
 
 ---
 
+## Turning findings into work
+
+```sh
+ratchet scan . --emit findings --repo myservice > findings.jsonl
+
+docket plan   < findings.jsonl                       # what would be created
+docket create < findings.jsonl --provider file --yes # markdown, no tracker
+docket create < findings.jsonl --provider linear --team ENG --label tech-debt --yes
+docket sync   < findings.jsonl --provider linear --yes   # progress, close what is done
+docket status
+```
+
+### Group by theme, not by finding
+
+`--group-by theme` (the default) collapses a repetitive backlog into something a
+team will actually clear. On a real 5-year service: **208 findings → 5 tickets**,
+because 97 of them were the same rule and 90 were another.
+
+`--group-by file` when several different rules fire in one place. `--group-by
+finding` exists and is almost always wrong.
+
+### How you know what is still open
+
+Each ticket stores its cohort of fingerprints. `docket sync` re-scans and does
+set arithmetic:
+
+```
+T-002   Fix 90 × naked-type-assertion    47/90
+T-004   Fix 3 × panic-in-library          3/3  ✓ ready to close
+```
+
+Better than one ticket per finding, because you get progress rather than a
+binary — and the fingerprints already survive reformatting, so the count is
+honest.
+
+**The cohort is fixed at creation.** A ticket for "all X" would normally never
+close; `ratchet check` blocks new instances from landing, so it has a finish
+line. Later findings of the same theme are *not* absorbed.
+
+### Safety
+
+| | |
+|---|---|
+| `--yes` | required to touch a tracker. Without it, preview only |
+| `--max N` | caps a run (default 20) |
+| `--min-size N` | skip cohorts smaller than N |
+| `--provider file` | markdown on disk, no network, no token |
+
+It **refuses to ticket a `false-positive`** — that is noise reaching a human,
+which is the failure this project exists to prevent. Fix the rule instead; the
+plan names which rule produced them. It also never re-files a finding whose
+ticket someone closed, because closing it was a decision.
+
+### Letting agents do the fixing
+
+The ticket body lists every location and ends with the verification command. An
+agent can work a whole cohort, then gate itself:
+
+```sh
+ratchet check .    # before opening the PR
+```
+
+That matters: measured failure rates for automated remediation are real — 10.5%
+of automated cycle fixes create new cycles, and the most aggressive repair agent
+in one 2026 study introduced 140 new smells while fixing others. Running
+`ratchet check` before the PR means a fix that makes something else worse never
+reaches a reviewer.
+
+**Coverage decides whether review can be automated.** For a refactor the
+acceptance criterion is "behaviour did not change", which tests can verify — but
+only where coverage exists, and hotspot functions are typically the worst
+covered. If coverage is thin, the first ticket should be "write characterisation
+tests", which is a safer agent task and makes the refactor reviewable afterwards.
+
 ## For agents
 
 `docs/agent-guide.md` is written for an AI agent to read before helping someone
