@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,6 +23,7 @@ import (
 	"github.com/sherzing/ratchet/internal/baseline"
 	"github.com/sherzing/ratchet/internal/model"
 	"github.com/sherzing/ratchet/internal/report"
+	"github.com/sherzing/ratchet/internal/sarif"
 )
 
 const version = "0.1.0"
@@ -43,6 +45,8 @@ func main() {
 		err = cmdCheck(os.Args[2:])
 	case "history":
 		err = cmdHistory(os.Args[2:])
+	case "import":
+		err = cmdImport(os.Args[2:])
 	case "rules":
 		cmdRules()
 	case "version", "-v", "--version":
@@ -68,6 +72,7 @@ usage:
   ratchet baseline [flags] [path]   record current state as tolerated
   ratchet check    [flags] [path]   exit non-zero only on regression
   ratchet history  [flags] [path]   metric series over git history
+  ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
   ratchet rules                     list rules
   ratchet version
 
@@ -498,4 +503,97 @@ func cmdRules() {
 		r := analyze.Rules[id]
 		fmt.Printf("%-28s [%s]\n  %s\n\n", id, r.Severity, r.Doc)
 	}
+}
+
+// cmdImport ingests SARIF so the ratchet works on languages ratchet cannot parse.
+//
+// The point is reuse, not coverage: golangci-lint, Roslyn analyzers, semgrep,
+// CodeQL and dart analyze all emit SARIF already. Consuming it is strictly
+// better than writing a Dart parser and a C# parser and owning both forever.
+func cmdImport(args []string) error {
+	fs := flag.NewFlagSet("import", flag.ExitOnError)
+	root := fs.String("root", ".", "repository root, for making absolute SARIF paths relative")
+	tool := fs.String("tool", "", "override the tool name used to namespace rule IDs")
+	baselineFile := fs.String("file", defaultBaselineFile, "baseline path")
+	mode := fs.String("mode", "report", "report | baseline | check")
+	includeSuppressed := fs.Bool("include-suppressed", false, "import results the producer marked suppressed")
+	force := fs.Bool("force", false, "overwrite an existing baseline (mode=baseline)")
+	asJSON := fs.Bool("json", false, "emit JSON")
+	src := parseArgs(fs, args)
+	if src == "." {
+		return fmt.Errorf("usage: ratchet import [flags] <file.sarif>\n  pipe with: golangci-lint run --out-format sarif | ratchet import -")
+	}
+
+	var (
+		findings []model.Finding
+		err      error
+	)
+	opt := sarif.Options{Root: *root, ToolPrefix: *tool, IncludeSuppressed: *includeSuppressed}
+	if src == "-" {
+		findings, err = sarif.Import(os.Stdin, opt)
+	} else {
+		findings, err = sarif.ImportFile(src, opt)
+	}
+	if err != nil {
+		return err
+	}
+
+	rep := &model.Report{Root: *root, Findings: findings}
+	rep.Summarise(0) // file count is unknown from SARIF alone
+	rep.Commit = gitCommit(*root)
+
+	path := *baselineFile
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(*root, path)
+	}
+
+	switch *mode {
+	case "report":
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(rep)
+		}
+		fmt.Printf("imported %d findings\n", len(findings))
+		byRule := rep.Summary.FindingsByRule
+		keys := make([]string, 0, len(byRule))
+		for k := range byRule {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Printf("  %-52s %d\n", k, byRule[k])
+		}
+		return nil
+
+	case "baseline":
+		if _, err := os.Stat(path); err == nil && !*force {
+			return fmt.Errorf("baseline already exists at %s\n"+
+				"  regenerating it would silently forgive every current violation.\n"+
+				"  use --force to overwrite", path)
+		}
+		b := baseline.From(rep, rep.Commit)
+		if err := b.Save(path); err != nil {
+			return err
+		}
+		fmt.Printf("wrote %s with %d tolerated findings\n", path, len(b.Tolerated))
+		return nil
+
+	case "check":
+		b, err := baseline.Load(path)
+		if err != nil {
+			return fmt.Errorf("%w\n  run `ratchet import --mode baseline` first", err)
+		}
+		res := b.Check(rep, false)
+		fmt.Printf("%d tolerated, %d new, %d fixed\n", res.Existing, len(res.New), len(res.Fixed))
+		if len(res.New) > 0 {
+			fmt.Printf("\nNEW findings (these fail the build):\n")
+			report.Findings(os.Stdout, res.New)
+		}
+		if res.Regressed() {
+			os.Exit(1)
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown mode %q (want report|baseline|check)", *mode)
 }

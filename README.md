@@ -58,7 +58,31 @@ ratchet check . --strict-caps     # also fail if peak complexity grows
 ratchet baseline . --tighten      # lock in what has been fixed
 ratchet history . --since "6 months ago" --interval "1 week"
 ratchet rules                     # what it checks and why
+
+# any language, via SARIF from its native linter
+golangci-lint run --out-format sarif | ratchet import - --mode check
+ratchet import roslyn.sarif --root . --mode baseline
+ratchet import semgrep.sarif --mode check
 ```
+
+## Any language, via SARIF
+
+ratchet only parses Go. But the valuable part was never the detectors — it is the
+**mechanism**: a fingerprinted baseline that tolerates what exists, fails only on
+what is new, and cannot be silently reset. That is language-agnostic.
+
+So `ratchet import` consumes SARIF 2.1.0 from whatever each language already has:
+golangci-lint, Roslyn analyzers, semgrep, CodeQL, Trivy, `dart analyze` via a
+converter. Better fidelity than anything we would write, and no new parsers to
+keep alive.
+
+- rule IDs are namespaced by tool, so two linters emitting `unused` cannot
+  silently excuse each other in one baseline
+- the producer's own `partialFingerprints` are preferred when supplied; otherwise
+  ratchet hashes file + rule + logical location + snippet, **never the line number**
+- SARIF `suppressions` are honoured, for the same reason `//nolint` is
+- absolute and `file://` paths are made repo-relative so imported findings key
+  identically to native ones
 
 ## Metrics
 
