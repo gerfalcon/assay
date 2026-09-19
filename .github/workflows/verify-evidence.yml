@@ -1,0 +1,25 @@
+name: verify evidence
+
+# Runs on every PR touching evidence/. A submission that carries a path, a
+# fingerprint, a repository name or anything else outside the allowlist fails
+# here rather than becoming permanent in a public repository's git history.
+on:
+  pull_request:
+    paths: ["evidence/**"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.26" }
+      - run: go build -o /tmp/strata ./cmd/strata
+      - name: verify submitted evidence
+        run: |
+          shopt -s nullglob globstar
+          files=(evidence/**/*.jsonl evidence/**/*.json)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no evidence files in this PR"; exit 0
+          fi
+          /tmp/strata verify "${files[@]}"

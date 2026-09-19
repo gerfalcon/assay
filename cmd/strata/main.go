@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sherzing/assay/internal/evidence"
 	"github.com/sherzing/assay/internal/store"
 	"github.com/sherzing/assay/pkg/schema"
 )
@@ -45,6 +46,10 @@ func main() {
 		err = cmdStat(os.Args[2:])
 	case "precision":
 		err = cmdPrecision(os.Args[2:])
+	case "export":
+		err = cmdExport(os.Args[2:])
+	case "verify":
+		err = cmdVerify(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("strata", version)
 	case "help", "-h", "--help":
@@ -70,6 +75,8 @@ usage:
   strata verdicts [--store DIR] [--rule R]
   strata stat     [--store DIR]
   strata precision [--store DIR] [--rule R] [--min-judged N]
+  strata export   --org NAME [--period YYYY-Qn] [--min-judged 10]
+  strata verify   <file.jsonl>
 
 dates are YYYY-MM-DD. default store is .assay
 everything reads and writes JSONL, so it composes:
@@ -426,6 +433,114 @@ func cmdPrecision(args []string) error {
 			fmt.Printf("  %s — only %.0f%% of %d findings judged. Too little evidence to trust the number.\n",
 				r.Rule, r.Coverage*100, r.Seen)
 		}
+	}
+	return nil
+}
+
+// cmdExport produces the aggregate an organisation can share.
+//
+// Refuses without an --org, because unattributed evidence cannot count toward
+// the multi-organisation bar and would just be noise in the corpus.
+func cmdExport(args []string) error {
+	fs := flag.NewFlagSet("export", flag.ExitOnError)
+	dir := storeFlag(fs)
+	org := fs.String("org", "", "organisation to attribute this evidence to (required)")
+	period := fs.String("period", "", "YYYY-Qn (default: current quarter)")
+	minJudged := fs.Int("min-judged", 10, "skip rules with fewer judged findings")
+	rule := fs.String("rule", "", "export only this rule")
+	fs.Parse(args)
+
+	s, err := store.Open(*dir)
+	if err != nil {
+		return err
+	}
+	rows, err := s.Precision()
+	if err != nil {
+		return err
+	}
+	opt := evidence.Options{Org: *org, Period: *period, MinJudged: *minJudged}
+	if *rule != "" {
+		opt.Rules = map[string]bool{*rule: true}
+	}
+	recs, skipped, err := evidence.Build(rows, opt)
+	if err != nil {
+		return err
+	}
+
+	// Self-verify before anything is written. The exporter and the verifier
+	// disagreeing is exactly the bug that would leak something.
+	enc := json.NewEncoder(os.Stdout)
+	for _, r := range recs {
+		raw, _ := json.Marshal(r)
+		if probs := evidence.Verify(raw); evidence.Fatal(probs) {
+			return fmt.Errorf("refusing to emit %s — the exporter produced something the verifier rejects:\n  %v",
+				r.Rule, probs[0])
+		}
+		if err := enc.Encode(r); err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "\n%d records exported", len(recs))
+	if len(skipped) > 0 {
+		fmt.Fprintf(os.Stderr, ", %d skipped as too thin:\n", len(skipped))
+		for _, sk := range skipped {
+			fmt.Fprintf(os.Stderr, "  %s\n", sk)
+		}
+	} else {
+		fmt.Fprintln(os.Stderr)
+	}
+	fmt.Fprintf(os.Stderr, "\nThis carries counts only — no paths, fingerprints, repo names or reasons.\n")
+	fmt.Fprintf(os.Stderr, "Read it before you send it; `strata verify` checks it again on arrival.\n")
+	return nil
+}
+
+// cmdVerify checks a submitted evidence file. Intended for CI on the receiving
+// side, and for contributors to run before anything leaves their network.
+func cmdVerify(args []string) error {
+	fs := flag.NewFlagSet("verify", flag.ExitOnError)
+	quiet := fs.Bool("quiet", false, "only report problems")
+	fs.Parse(args)
+	if fs.NArg() == 0 {
+		return fmt.Errorf("usage: strata verify <file.jsonl>")
+	}
+
+	bad := 0
+	for _, path := range fs.Args() {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		byLine := evidence.VerifyStream(data)
+		lines := 0
+		for _, l := range strings.Split(string(data), "\n") {
+			if t := strings.TrimSpace(l); t != "" && !strings.HasPrefix(t, "#") {
+				lines++
+			}
+		}
+		fatal := 0
+		nums := make([]int, 0, len(byLine))
+		for n := range byLine {
+			nums = append(nums, n)
+		}
+		sort.Ints(nums)
+		for _, n := range nums {
+			for _, p := range byLine[n] {
+				if p.Fatal {
+					fatal++
+				}
+				fmt.Printf("%s:%d  %s\n", path, n, p)
+			}
+		}
+		if fatal > 0 {
+			bad++
+			fmt.Printf("%s: %d records, %d problems blocking\n", path, lines, fatal)
+		} else if !*quiet {
+			fmt.Printf("%s: %d records, safe to share\n", path, lines)
+		}
+	}
+	if bad > 0 {
+		os.Exit(1)
 	}
 	return nil
 }
