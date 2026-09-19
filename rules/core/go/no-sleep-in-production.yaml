@@ -1,0 +1,15 @@
+rules:
+  - id: no-sleep-in-production
+    languages: [go]
+    severity: WARNING
+    message: >-
+      time.Sleep outside tests is almost always a race being papered over or a
+      retry without backoff. Use a ticker, a backoff, or wait on the thing you
+      actually need.
+    metadata:
+      category: reliability
+      evidence: 0.02 per kLOC in both services measured — effectively never
+      confidence: high
+    pattern: time.Sleep(...)
+    paths:
+      exclude: ["*_test.go", "**/testutil/**", "**/e2e/**"]

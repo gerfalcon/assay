@@ -1,0 +1,19 @@
+rules:
+  - id: no-init-function
+    languages: [go]
+    severity: WARNING
+    message: >-
+      init() runs before main with an order nobody controls, which makes startup
+      failures hard to trace and the package hard to test. Prefer explicit
+      construction from main.
+    metadata:
+      category: maintainability
+      evidence: 0.04 and 0.00 per kLOC across two production Go services
+      confidence: medium
+      note: >-
+        Legitimate in packages registering drivers or codecs. Expect false
+        positives there and annotate them — that is what the data is for.
+    pattern: |
+      func init() { ... }
+    paths:
+      exclude: ["*_test.go"]

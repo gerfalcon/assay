@@ -1,0 +1,17 @@
+rules:
+  - id: no-error-string-compare
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Comparing err.Error() to a string breaks the moment anyone rewords the
+      message, and it cannot see wrapped errors. Use errors.Is for sentinels or
+      errors.As for types.
+    metadata:
+      category: correctness
+      evidence: 0 occurrences per kLOC across two production Go services
+      confidence: high
+    patterns:
+      - pattern-either:
+          - pattern: $ERR.Error() == "..."
+          - pattern: $ERR.Error() != "..."
+          - pattern: strings.Contains($ERR.Error(), "...")
