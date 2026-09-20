@@ -1,0 +1,80 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+
+      # A compiled binary once reached the public module zip, carrying the old
+      # module path and a service name from its help text in the symbol table.
+      # Module zips are immutable and permanently cached, so this has to be
+      # caught before the push, not after.
+      - name: No committed binaries
+        run: |
+          found=$(git ls-files | while read -r f; do
+            [ -f "$f" ] || continue
+            case "$(file --mime-type -b "$f")" in
+              application/x-executable|application/x-mach-binary|application/x-sharedlib)
+                echo "$f" ;;
+            esac
+          done)
+          if [ -n "$found" ]; then
+            echo "compiled binaries are tracked — they end up in the module zip forever:"
+            echo "$found"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      # -race matters here: the store takes concurrent appends and a corrupt
+      # JSONL line is silent data loss rather than a crash.
+      - name: Test
+        run: go test -race -count=1 ./...
+
+      # The cmd/* tests drive the real binaries as child processes, so plain
+      # `go test -cover` reports 0% for them — the work happens out of process.
+      # GOCOVERDIR makes cmdtest build with -cover and collect the child
+      # counters; without it the headline number understates by ~3,000
+      # statements and looks like the CLIs are untested.
+      - name: Coverage
+        run: |
+          mkdir -p /tmp/covd
+          GOCOVERDIR=/tmp/covd go test -count=1 ./... >/dev/null
+          echo "--- end-to-end (binaries) ---"
+          go tool covdata percent -i=/tmp/covd
+          echo "--- in-process (libraries) ---"
+          go test -count=1 -coverprofile=cover.out ./internal/... ./pkg/... >/dev/null
+          go tool cover -func=cover.out | tail -1
+
+      # The tool holds its own line, or it has no standing to hold anyone
+      # else's. Step 4 of the release checklist in rules/MAINTAINING.md.
+      - name: Ratchet holds its own baseline
+        run: |
+          go run ./cmd/ratchet scan .
+          go run ./cmd/ratchet check .

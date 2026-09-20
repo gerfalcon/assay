@@ -152,6 +152,7 @@ func Scan(root string, opt Options) (*model.Report, error) {
 	files := 0
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		// quality:false-positive returning nil from a WalkDir callback is the API's documented skip signal, not a swallowed error
 		if err != nil {
 			return nil // unreadable paths are skipped, not fatal
 		}

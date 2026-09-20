@@ -4,11 +4,14 @@
 package report
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sherzing/assay/internal/model"
 )
@@ -21,18 +24,28 @@ func JSON(w io.Writer, rep *model.Report) error {
 }
 
 // CSV writes one row per function, for the trend spreadsheet.
+//
+// Uses encoding/csv rather than Fprintf: a path containing a comma —
+// `pkg/a,b/handler.go` — would otherwise shift every subsequent column and
+// corrupt the row silently, which is the worst way for a spreadsheet to be
+// wrong. Values without commas or quotes are emitted identically to before.
 func CSV(w io.Writer, rep *model.Report) error {
-	if _, err := fmt.Fprintln(w, "file,line,func,recv,exported,cyclomatic,cognitive,maxNesting,statements,params,results"); err != nil {
+	cw := csv.NewWriter(w)
+	if err := cw.Write([]string{"file", "line", "func", "recv", "exported",
+		"cyclomatic", "cognitive", "maxNesting", "statements", "params", "results"}); err != nil {
 		return err
 	}
 	for _, f := range rep.Funcs {
-		if _, err := fmt.Fprintf(w, "%s,%d,%s,%s,%t,%d,%d,%d,%d,%d,%d\n",
-			f.File, f.Line, f.Name, f.Recv, f.Exported,
-			f.Cyclomatic, f.Cognitive, f.MaxNesting, f.Statements, f.Params, f.Results); err != nil {
+		if err := cw.Write([]string{
+			f.File, strconv.Itoa(f.Line), f.Name, f.Recv, strconv.FormatBool(f.Exported),
+			strconv.Itoa(f.Cyclomatic), strconv.Itoa(f.Cognitive), strconv.Itoa(f.MaxNesting),
+			strconv.Itoa(f.Statements), strconv.Itoa(f.Params), strconv.Itoa(f.Results),
+		}); err != nil {
 			return err
 		}
 	}
-	return nil
+	cw.Flush()
+	return cw.Error()
 }
 
 // SARIF renders findings in the format GitHub code scanning ingests. This is
@@ -154,11 +167,16 @@ func Text(w io.Writer, rep *model.Report, top int) error {
 	return nil
 }
 
+// truncate cuts to n display positions, counting runes rather than bytes.
+// Slicing bytes splits multi-byte sequences — a Cyrillic or CJK identifier came
+// out as mojibake at 24 of 37 widths — and the column alignment was wrong too,
+// since a 3-byte rune occupies one column.
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	if utf8.RuneCountInString(s) <= n {
 		return s
 	}
-	return s[:n-1] + "…"
+	r := []rune(s)
+	return string(r[:n-1]) + "…"
 }
 
 // Findings prints findings grouped by file, for local use.

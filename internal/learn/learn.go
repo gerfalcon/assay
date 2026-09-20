@@ -156,6 +156,7 @@ func Probe(repos []string, cands []Candidate, t Thresholds) ([]Result, error) {
 		lines := 0
 
 		err := filepath.WalkDir(repo, func(p string, d fs.DirEntry, err error) error {
+			// quality:false-positive returning nil from a WalkDir callback is the API's documented skip signal, not a swallowed error
 			if err != nil {
 				return nil
 			}

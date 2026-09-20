@@ -14,6 +14,7 @@ package schema
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -249,6 +250,7 @@ func NewEncoder(w io.Writer) *Encoder {
 
 // Write emits one record. Kind and V are set here so no caller can forget them
 // and produce a line nothing downstream can route.
+// quality:wont-fix a sum-type dispatcher cannot name a concrete type; the runtime check is deliberate and returns an error
 func (e *Encoder) Write(v any) error {
 	switch t := v.(type) {
 	case *Finding:
@@ -266,3 +268,24 @@ func (e *Encoder) Write(v any) error {
 }
 
 func (e *Encoder) Flush() error { return e.w.Flush() }
+
+// Line encodes one record as a complete JSONL line, trailing newline included.
+//
+// This exists so an appender can hand the whole line to a single Write. An
+// Encoder wrapped straight around a file flushes on a 4 KiB BUFFER boundary,
+// which falls in the middle of a record; two processes appending to the same
+// file then splice partial lines into each other and both records become
+// unreadable. O_APPEND guarantees the bytes land at the end, but it does not
+// make a multi-write record atomic — only writing the line in one call does.
+// quality:wont-fix same sum-type dispatcher as Encoder.Write; a concrete type cannot express "any of the four record kinds"
+func Line(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	e := NewEncoder(&buf)
+	if err := e.Write(v); err != nil {
+		return nil, err
+	}
+	if err := e.Flush(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}

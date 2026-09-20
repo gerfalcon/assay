@@ -1,25 +1,41 @@
 {
   "version": "1",
+  "commit": "4a960e617515b560be4aa9bb8b0e7bec5856f9b7",
   "tolerated": {
     "0d6849c9078cd133": {
       "rule": "error-swallowed",
       "file": "internal/analyze/analyze.go",
       "func": "Scan"
     },
-    "58f96c7558556478": {
-      "rule": "error-swallowed",
-      "file": "internal/analyze/analyze.go",
-      "func": "Scan"
+    "1d48fd331b1c7e52": {
+      "rule": "any-in-exported-signature",
+      "file": "pkg/schema/schema.go",
+      "func": "Line"
     },
-    "b34bd85577ec24db": {
+    "33f3eb26607d08a6": {
       "rule": "error-swallowed",
-      "file": "internal/analyze/analyze.go",
-      "func": "Scan"
+      "file": "internal/store/store.go",
+      "func": "Store.QueryMeasures"
+    },
+    "b974aedd6e6cb9cc": {
+      "rule": "any-in-exported-signature",
+      "file": "pkg/schema/schema.go",
+      "func": "Encoder.Write"
+    },
+    "ce7a344da8ec76cb": {
+      "rule": "error-swallowed",
+      "file": "internal/learn/learn.go",
+      "func": "Probe"
+    },
+    "d5c76863eac42133": {
+      "rule": "error-swallowed",
+      "file": "internal/store/precision.go",
+      "func": "Store.findingHistory"
     }
   },
   "caps": {
-    "maxCyclomatic": 25,
-    "maxCognitive": 52,
+    "maxCyclomatic": 24,
+    "maxCognitive": 42,
     "maxNesting": 4
   }
 }

@@ -63,21 +63,26 @@ func (s *Store) dayPath(kind string, ts time.Time) string {
 // Opens one handle per partition per call rather than per record — a history
 // backfill writes thousands of records across a handful of days, and reopening
 // per record would dominate the runtime.
+// Each record is written with a single Write of its complete line. Buffering an
+// encoder onto the file instead flushes on a 4 KiB boundary — mid-record — and
+// two concurrent appenders then splice partial lines into each other, losing
+// both records silently. See schema.Line.
 func (s *Store) Append(r io.Reader) (measures, findings, verdicts int, err error) {
-	files := map[string]*schema.Encoder{}
 	handles := map[string]*os.File{}
 	defer func() {
-		for _, e := range files {
-			_ = e.Flush()
-		}
 		for _, h := range handles {
-			_ = h.Close()
+			// Surface a close failure rather than discarding it: on ENOSPC the
+			// alternative is reporting "appended 412 measures" having written
+			// none.
+			if cerr := h.Close(); cerr != nil && err == nil {
+				err = cerr
+			}
 		}
 	}()
 
-	out := func(path string) (*schema.Encoder, error) {
-		if e, ok := files[path]; ok {
-			return e, nil
+	out := func(path string) (*os.File, error) {
+		if h, ok := handles[path]; ok {
+			return h, nil
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return nil, err
@@ -87,10 +92,15 @@ func (s *Store) Append(r io.Reader) (measures, findings, verdicts int, err error
 			return nil, err
 		}
 		handles[path] = h
-		e := schema.NewEncoder(h)
-		files[path] = e
-		return e, nil
+		return h, nil
 	}
+
+	// ONE timestamp for the whole call. Stamping each record with its own
+	// time.Now() would split a single scan into N distinct "scans", and the
+	// precision computation identifies the latest scan by exact timestamp
+	// equality — so every finding but the last would read as having been
+	// FIXED, manufacturing passive confirmation out of one ingest.
+	now := time.Now().UTC()
 
 	derr := schema.Decode(r, func(rec schema.Record) error {
 		var path string
@@ -98,19 +108,19 @@ func (s *Store) Append(r io.Reader) (measures, findings, verdicts int, err error
 		switch {
 		case rec.Measure != nil:
 			if rec.Measure.TS.IsZero() {
-				rec.Measure.TS = time.Now().UTC()
+				rec.Measure.TS = now
 			}
 			path, payload = s.dayPath("measures", rec.Measure.TS), rec.Measure
 			measures++
 		case rec.Finding != nil:
 			if rec.Finding.TS.IsZero() {
-				rec.Finding.TS = time.Now().UTC()
+				rec.Finding.TS = now
 			}
 			path, payload = s.dayPath("findings", rec.Finding.TS), rec.Finding
 			findings++
 		case rec.Verdict != nil:
 			if rec.Verdict.TS.IsZero() {
-				rec.Verdict.TS = time.Now().UTC()
+				rec.Verdict.TS = now
 			}
 			// Verdicts are a single append-only log, not date-partitioned:
 			// the whole file is read to resolve current state, and there are
@@ -120,11 +130,16 @@ func (s *Store) Append(r io.Reader) (measures, findings, verdicts int, err error
 		default:
 			return nil
 		}
-		e, err := out(path)
+		h, err := out(path)
 		if err != nil {
 			return err
 		}
-		return e.Write(payload)
+		line, err := schema.Line(payload)
+		if err != nil {
+			return err
+		}
+		_, err = h.Write(line)
+		return err
 	}, nil)
 	return measures, findings, verdicts, derr
 }
@@ -170,6 +185,7 @@ func (s *Store) QueryMeasures(q Query) ([]schema.Measure, error) {
 	var out []schema.Measure
 	err := s.walkDays("measures", q.Since, q.Until, func(path string) error {
 		f, err := os.Open(path)
+		// quality:false-positive returning nil from a WalkDir callback is the API's documented skip signal, not a swallowed error
 		if err != nil {
 			return nil // a partition that vanished mid-scan is not fatal
 		}
@@ -297,11 +313,17 @@ func (s *Store) AppendTicket(t schema.Ticket) error {
 		return err
 	}
 	defer f.Close()
-	enc := schema.NewEncoder(f)
-	if err := enc.Write(&t); err != nil {
+	// One Write of the whole line, for the same reason as Append: a cohort
+	// ticket carrying a few hundred fingerprints exceeds the encoder's buffer
+	// and would otherwise flush mid-record.
+	line, err := schema.Line(&t)
+	if err != nil {
 		return err
 	}
-	return enc.Flush()
+	if _, err := f.Write(line); err != nil {
+		return err
+	}
+	return f.Close()
 }
 
 // Bucket is one rolled-up period.

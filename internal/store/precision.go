@@ -157,6 +157,7 @@ func (s *Store) findingHistory() (map[string]findingInfo, map[string]bool, error
 
 	err := s.walkDays("findings", time.Time{}, time.Time{}, func(path string) error {
 		f, err := os.Open(path)
+		// quality:false-positive returning nil from a WalkDir callback is the API's documented skip signal, not a swallowed error
 		if err != nil {
 			return nil
 		}

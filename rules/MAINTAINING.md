@@ -130,9 +130,27 @@ is information, not a reason to move the line.
 
 ## Release checklist
 
-1. `go test ./...`
+Steps 1 and 4 run on every push and pull request (`.github/workflows/test.yml`),
+so by release time they should already be green. Re-run them anyway if the last
+CI run is not against the exact tree you are tagging.
+
+1. `go test -race ./...`
 2. `strata promote-check --evidence evidence/` — review every non-promote outcome
 3. Demote anything that has fallen below the bar, and write down why
-4. `ratchet scan . && ratchet check .` — the tool holds its own line, or it has
-   no standing to hold anyone else's
+4. `ratchet check .` — the tool holds its own line, or it has no standing to
+   hold anyone else's
 5. Update `rules/core/go/README.md` if the evidence table has moved
+
+### On regenerating the baseline
+
+`ratchet baseline` refuses to overwrite an existing file, because a silent
+regeneration forgives every current violation and nobody reviews a file they did
+not know changed. Two ways past it, and the difference matters:
+
+- `--tighten` drops entries that no longer reproduce and keeps the rest. Safe,
+  and the normal move after a cleanup.
+- `--force` rewrites the whole file. Legitimate when you have reviewed the new
+  entries — the git diff is the review — and never as a way to get CI green.
+
+If you reach for `--force` to unblock a build, you have just turned the ratchet
+off.

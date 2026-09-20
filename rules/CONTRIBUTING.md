@@ -161,6 +161,40 @@ rules:
   choose.
 - **Known false positives named.** Every rule has some. Hiding them wastes other
   people's triage.
+- **A good/bad corpus.** See below. A rule with no negative cases has not been
+  thought about hard enough.
+
+### The good/bad corpus
+
+Every built-in rule carries a pair of files, and a test asserts that no rule
+exists without them:
+
+```
+internal/analyze/testdata/rules/<rule-id>/
+  bad.go    every line ending `// want` must produce a finding,
+            and no other line may produce one
+  good.go   must produce no unjudged finding at all
+```
+
+**The good file is the more valuable half.** It is where you record the shapes
+that look like violations and are not — and those are not hypothetical. Three of
+the five original rules were noise on first contact with production code, all
+for reasons now pinned in `good.go`:
+
+| shape | why it is not a defect |
+|---|---|
+| `func Exec(..., args ...any)` | variadic pass-through is the idiom behind `fmt.Printf` and every SQL driver |
+| `panic` inside `mustParse` | the `must*` prefix is Go's own announcement of a deliberate panic |
+| `//nolint:forcetypeassert` | an existing suppression another tool already honours |
+| `return nil` in a `WalkDir` callback | that is the API's skip signal, not a swallowed error |
+
+A rule that gets greedier now fails in CI instead of on someone's repository.
+When you find a new false-positive class in the wild, the fix is a case in
+`good.go` — that is what stops it coming back.
+
+Marking a line `// want-unjudged` in `good.go` asserts it *should* still produce
+an unjudged finding; it is used to pin the annotation scope and you will rarely
+need it.
 
 ### What gets a rule rejected
 
