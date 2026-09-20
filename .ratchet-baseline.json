@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "commit": "4a960e617515b560be4aa9bb8b0e7bec5856f9b7",
+  "commit": "0c070dbe4f582afaf86e1945458fa9641c2e085d",
   "tolerated": {
     "0d6849c9078cd133": {
       "rule": "error-swallowed",
@@ -16,6 +16,11 @@
       "rule": "error-swallowed",
       "file": "internal/store/store.go",
       "func": "Store.QueryMeasures"
+    },
+    "aa81d74c65b89b22": {
+      "rule": "error-swallowed",
+      "file": "internal/store/store.go",
+      "func": "Store.QueryFindings"
     },
     "b974aedd6e6cb9cc": {
       "rule": "any-in-exported-signature",

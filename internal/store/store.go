@@ -201,6 +201,44 @@ func (s *Store) QueryMeasures(q Query) ([]schema.Measure, error) {
 	return out, err
 }
 
+// QueryFindings scans the findings partitions and returns matches in time
+// order.
+//
+// The Repo and date fields of Query apply; Metric, Scope and Path do not, since
+// a finding has none of them. Rule filtering is left to the caller — findings
+// are read in bulk far less often than measures, and a rule predicate here
+// would be a second, subtly different filter path to keep correct.
+func (s *Store) QueryFindings(q Query) ([]schema.Finding, error) {
+	var out []schema.Finding
+	err := s.walkDays("findings", q.Since, q.Until, func(path string) error {
+		f, err := os.Open(path)
+		// quality:false-positive returning nil from a WalkDir callback is the API's documented skip signal, not a swallowed error
+		if err != nil {
+			return nil // a partition that vanished mid-scan is not fatal
+		}
+		defer f.Close()
+		return schema.Decode(f, func(rec schema.Record) error {
+			fi := rec.Finding
+			if fi == nil {
+				return nil
+			}
+			if q.Repo != "" && fi.Repo != q.Repo {
+				return nil
+			}
+			if !q.Since.IsZero() && fi.TS.Before(q.Since) {
+				return nil
+			}
+			if !q.Until.IsZero() && fi.TS.After(q.Until) {
+				return nil
+			}
+			out = append(out, *fi)
+			return nil
+		}, nil)
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].TS.Before(out[j].TS) })
+	return out, err
+}
+
 // walkDays visits partition files whose date falls in range. Filtering on the
 // path avoids opening files that cannot contain matches.
 func (s *Store) walkDays(kind string, since, until time.Time, fn func(string) error) error {

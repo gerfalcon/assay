@@ -333,16 +333,46 @@ func cmdStat(args []string) error {
 			last = m.TS
 		}
 	}
+	// Findings are a separate partition and were previously not counted at
+	// all, so a store holding thousands of them reported "measures: 0,
+	// verdicts: 0" and looked empty. stat is the "did my pipeline work"
+	// command; it has to answer for every record kind the store accepts.
+	finds, err := s.QueryFindings(store.Query{})
+	if err != nil {
+		return err
+	}
+	rules := map[string]int{}
+	judged := 0
+	for _, f := range finds {
+		rules[f.Rule]++
+		repos[f.Repo]++
+		if f.Verdict != "" {
+			judged++
+		}
+	}
+	delete(repos, "") // findings emitted without --repo would otherwise show as blank
+
 	vs, _ := s.Verdicts()
 	fmt.Printf("store:    %s\n", s.Root)
 	fmt.Printf("measures: %d", len(ms))
 	if len(ms) > 0 {
 		fmt.Printf("  %s → %s", first.Format("2006-01-02"), last.Format("2006-01-02"))
 	}
+	fmt.Printf("\nfindings: %d", len(finds))
+	if len(finds) > 0 {
+		// Unjudged is called out because it is the answer to the question stat
+		// leads to: precision reports nothing until findings carry verdicts.
+		fmt.Printf("  (%d judged, %d unjudged)", judged, len(finds)-judged)
+	}
 	fmt.Printf("\nverdicts: %d\n", len(vs))
 	if len(repos) > 0 {
 		fmt.Printf("repos:    %s\n", strings.Join(sortedKeys(repos), ", "))
+	}
+	if len(metrics) > 0 {
 		fmt.Printf("metrics:  %s\n", strings.Join(sortedKeys(metrics), ", "))
+	}
+	if len(rules) > 0 {
+		fmt.Printf("rules:    %s\n", strings.Join(sortedKeys(rules), ", "))
 	}
 	return nil
 }

@@ -1070,3 +1070,112 @@ func TestAppendStampsOneTimestampForTheWholeCall(t *testing.T) {
 		}
 	}
 }
+
+// ---- QueryFindings -------------------------------------------------------
+
+// There was no exported way to read findings back, which is why `strata stat`
+// reported "measures: 0, verdicts: 0" on a store holding thousands of them and
+// why the plumb end-to-end test had to walk the filesystem itself.
+func TestQueryFindingsRoundTrip(t *testing.T) {
+	s := openStore(t)
+	at := ts("2026-09-19T10:00:00Z")
+	if _, n, _, err := s.Append(stream(t,
+		finding("svc-a", "rule-one", "fp1", at),
+		finding("svc-a", "rule-two", "fp2", at),
+		finding("svc-b", "rule-one", "fp3", at),
+	)); err != nil || n != 3 {
+		t.Fatalf("append: n=%d err=%v", n, err)
+	}
+
+	got, err := s.QueryFindings(Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d findings, want 3", len(got))
+	}
+	byRepo, err := s.QueryFindings(Query{Repo: "svc-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(byRepo) != 2 {
+		t.Errorf("repo filter returned %d, want 2", len(byRepo))
+	}
+	for _, f := range byRepo {
+		if f.Repo != "svc-a" {
+			t.Errorf("repo filter leaked %q", f.Repo)
+		}
+	}
+}
+
+// Findings written on different days live in different partition files.
+// Summing only the latest would silently under-report every store older than a
+// day, which is every real one.
+func TestQueryFindingsSpansPartitions(t *testing.T) {
+	s := openStore(t)
+	for i, day := range []string{"2026-09-17T09:00:00Z", "2026-09-18T09:00:00Z", "2026-09-19T09:00:00Z"} {
+		if _, _, _, err := s.Append(stream(t,
+			finding("svc", "rule", fmt.Sprintf("fp%d", i), ts(day)),
+		)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.QueryFindings(Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d findings across three partitions, want 3", len(got))
+	}
+	// Time order, so a caller can take the most recent without sorting again.
+	for i := 1; i < len(got); i++ {
+		if got[i].TS.Before(got[i-1].TS) {
+			t.Errorf("findings are not in time order: %v", got)
+		}
+	}
+
+	mid, err := s.QueryFindings(Query{Since: ts("2026-09-18T00:00:00Z")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mid) != 2 {
+		t.Errorf("date filter returned %d, want the 2 on or after 18 Sep", len(mid))
+	}
+}
+
+func TestQueryFindingsOnAnEmptyStore(t *testing.T) {
+	got, err := openStore(t).QueryFindings(Query{})
+	if err != nil {
+		t.Errorf("empty store errored: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d findings from an empty store", len(got))
+	}
+}
+
+// Judged and unjudged must be distinguishable, because that is what gates the
+// precision command and "why is precision empty" is the next question a user
+// asks after running stat.
+func TestQueryFindingsPreservesTheVerdict(t *testing.T) {
+	st := openStore(t)
+	at := ts("2026-09-19T10:00:00Z")
+	judged := finding("svc", "rule", "fp-judged", at)
+	judged.Verdict = schema.FalsePositive
+	if _, _, _, err := st.Append(stream(t, judged, finding("svc", "rule", "fp-open", at))); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.QueryFindings(Query{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, f := range got {
+		if f.Verdict != "" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d findings came back judged, want 1 — the verdict did not survive the round trip", n)
+	}
+}

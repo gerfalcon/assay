@@ -340,3 +340,27 @@ func TestStrataUsageAndVersion(t *testing.T) {
 		t.Errorf("exit %d for no arguments, want 2", got)
 	}
 }
+
+// REGRESSION. `strata stat` counted measures and verdicts but never looked at
+// the findings partition, so a store holding thousands of findings reported
+// "measures: 0, verdicts: 0" and read as empty. stat is the "did my pipeline
+// work" command, so that is the one answer it must not get wrong.
+func TestStatReportsFindings(t *testing.T) {
+	strata := cmdtest.Build(t, "strata")
+	dir := t.TempDir()
+	store := filepath.Join(dir, "store")
+
+	strata.Run(t, dir, "stat", "--store", store).MustPass(t).MustSay(t, "findings: 0")
+
+	stream := `{"v":1,"kind":"finding","repo":"svc-a","ts":"2026-09-19T10:00:00Z","rule":"rule-one","severity":"error","file":"a.go","message":"m","fingerprint":"f1"}
+{"v":1,"kind":"finding","repo":"svc-a","ts":"2026-09-19T10:00:00Z","rule":"rule-two","severity":"error","file":"b.go","message":"m","fingerprint":"f2","verdict":"false-positive"}
+{"v":1,"kind":"finding","repo":"svc-b","ts":"2026-09-20T10:00:00Z","rule":"rule-one","severity":"error","file":"c.go","message":"m","fingerprint":"f3"}
+`
+	strata.Pipe(t, dir, stream, "append", "--store", store).MustPass(t)
+
+	r := strata.Run(t, dir, "stat", "--store", store).MustPass(t)
+	// Three findings across two date partitions, so this also proves stat is
+	// not reading only the most recent day.
+	r.MustSay(t, "findings: 3", "1 judged", "2 unjudged")
+	r.MustSay(t, "svc-a", "svc-b", "rule-one", "rule-two")
+}
