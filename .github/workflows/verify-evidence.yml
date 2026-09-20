@@ -3,6 +3,9 @@ name: verify evidence
 # Runs on every PR touching evidence/. A submission that carries a path, a
 # fingerprint, a repository name or anything else outside the allowlist fails
 # here rather than becoming permanent in a public repository's git history.
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths: ["evidence/**"]
