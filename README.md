@@ -45,6 +45,7 @@ renamed without breaking a build.
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
+| **`plumb`** | check the codebase against the architecture it declares. `scan`, `check`, `baseline`, `diff` |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -133,6 +134,141 @@ something whose ticket someone closed. `--yes` is required to touch a tracker;
 without it everything is a preview. `--provider file` writes markdown and needs
 no tracker at all.
 
+## Architecture conformance
+
+`plumb` answers one question: **does this code obey the architecture we chose?**
+It does not try to answer whether the architecture is any good. That distinction
+is the whole design, and it is not fastidiousness — SmellBench (2026) found
+**63.1%** of detected hard-severity architectural smells were expert-judged
+false positives. Tools that look for bad architecture without being told what
+good looks like produce findings nobody acts on.
+
+So plumb needs a human declaration, and the declaration lives in the document:
+
+````markdown
+# Architecture
+
+Dependencies point inward. The domain must be testable with no database,
+no HTTP server and no clock.
+
+```arch
+layer domain   internal/domain
+layer infra    internal/impl internal/store
+forbid domain -> infra
+```
+
+## Why
+
+The March incident came from a domain rule reading the database mid-evaluation,
+which made evaluation order significant and non-obvious.
+````
+
+The prose and the rule cannot drift, because they are the same file and the same
+review. It also means an agent reads the artefact it is bound by: a `CLAUDE.md`
+describing the architecture is a *prompt*, and a block CI enforces is a *gate*.
+
+### Checks are transitive, and that is the point
+
+A direct-import rule — which is what most dependency linters do — has a hole:
+
+```
+internal/domain -> internal/impl              caught
+internal/domain -> internal/helper -> impl    SILENT
+```
+
+Same architectural dependency, one hop away. Nobody has to be working around
+anything to produce it; an ordinary "extract a helper" refactor does. plumb
+walks the transitive closure and reports the **chain**, because `domain →
+helper → impl` tells you where to cut and "domain violates infra" does not.
+
+```
+$ plumb scan .
+18 packages, 4 rules, 1 violations
+
+forbid domain -> infra
+  internal/domain → internal/helper → internal/impl
+      the indirection through internal/helper does not change the dependency;
+      split internal/helper so the part internal/domain needs does not reach internal/impl
+```
+
+### Before it is worth anything
+
+**The tool is the easy half.** Without these steps it is a placebo, and shipping
+it without saying so invites exactly that.
+
+1. **Write `ARCHITECTURE.md`, including the `## Why`.** The prose is what stops
+   someone deleting a rule in eighteen months because it was in the way. A block
+   with no reasons is a config file with extra steps.
+2. **Declare what is already true.** A declaration that fails on the day it is
+   written teaches everyone to ignore it. Start from the shape the codebase has,
+   then tighten.
+3. **`plumb baseline` on adoption.** Do not start from zero violations on an
+   existing codebase — that is how a rule gets switched off in the first
+   afternoon. Freeze what exists, fail only what is new.
+4. **CODEOWNERS on the declaration, with a *different and smaller* group than
+   the code owners.** If the same person approves both the code and the rule it
+   broke, the separation is cosmetic.
+5. **CODEOWNERS must own itself**, or the guard is editable by the thing it
+   guards.
+6. **Branch protection with no admin bypass.** Otherwise every gate here is
+   advisory.
+7. **Run it before opening the PR, not only in CI.** A constraint hit during
+   design is a redirect; hit at review it is an obstacle to route around.
+
+```
+# CODEOWNERS
+/ARCHITECTURE.md        @org/architecture
+/.plumb-baseline.json   @org/architecture
+/CODEOWNERS             @org/architecture
+/.github/workflows/     @org/architecture
+```
+
+### Changing the architecture: make tightening free
+
+Architecture evolves, and a change process people route around is worse than
+none. So the cost is asymmetric, and `plumb diff` decides which side you are on:
+
+```sh
+plumb diff . --base origin/main
+```
+
+**Tightening** — adding a `forbid`, widening a layer so more code is covered —
+exits 0. It forbids strictly more; nobody needs protecting from it.
+
+**Loosening** — removing a `forbid`, narrowing a layer so packages quietly leave
+its rules — exits non-zero, so CI can require the second reviewer only where it
+matters. Note that narrowing is a loosening even though the file gets shorter:
+length is not the signal.
+
+Reordering statements is **no change**. If cosmetic edits demanded a reviewer,
+the process would be ignored for the edits that count.
+
+### Where the real risk is
+
+Measured on a 613-commit AI-assisted Go service that had layering rules:
+
+| route around the gate | observed |
+|---|---|
+| the rule does not express what you meant | **found in five minutes** — the transitive hole above |
+| the check is not run at all | silent by construction |
+| suppression | 122 `//nolint`, **none** on the layering rules |
+| editing the declaration | **0** — touched twice, both tightening, 10 insertions and 0 deletions |
+
+**Tampering is the smallest risk, not the largest.** It is the loudest possible
+act: a diff to a named file, in the PR, trivially owned by CODEOWNERS. The
+failures that actually happen are silent — a rule that does not say what you
+meant, or a check nobody wired up. Spend the effort there.
+
+The same data suggests why structural constraints hold better than local ones.
+Suppressions on that service grew 0 → 122 in three months, all on local lints
+(`errcheck` 44, `gosec` 23, `wrapcheck` 13). A layering rule fires as you write
+the import, when redirecting is nearly free; a local lint fires after the logic
+exists, when suppressing is cheaper than fixing.
+
+And the ratchet removes most of the motive before you reach for a lock: you
+never need to weaken a rule to land a PR, only to avoid adding new violations.
+
+
 ## Storage: files
 
 ```
@@ -160,6 +296,7 @@ go install github.com/sherzing/assay/cmd/ratchet@latest
 go install github.com/sherzing/assay/cmd/strata@latest
 go install github.com/sherzing/assay/cmd/lens@latest
 go install github.com/sherzing/assay/cmd/docket@latest
+go install github.com/sherzing/assay/cmd/plumb@latest
 ```
 
 Single Go module, one binary per `cmd/` — install only what you want. No

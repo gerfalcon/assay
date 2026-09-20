@@ -1,0 +1,144 @@
+package arch
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Change classifies a declaration diff.
+type Change int
+
+const (
+	// NoChange means the two declarations are semantically identical.
+	// Reordering statements is not a change.
+	NoChange Change = iota
+	// Tightening adds a rule or narrows a layer. Strictly more is forbidden.
+	Tightening
+	// Loosening removes a rule or widens a layer. Strictly less is forbidden.
+	Loosening
+	// Mixed both tightens and loosens.
+	Mixed
+)
+
+func (c Change) String() string {
+	switch c {
+	case NoChange:
+		return "no change"
+	case Tightening:
+		return "tightening"
+	case Loosening:
+		return "loosening"
+	default:
+		return "mixed"
+	}
+}
+
+// NeedsReview reports whether a change weakens the architecture.
+//
+// THE ASYMMETRY IS THE POINT. A change process everyone routes around is worse
+// than none, so tightening must be free — the common case, and the one nobody
+// needs protecting from. Only loosening costs a second reviewer.
+func (c Change) NeedsReview() bool { return c == Loosening || c == Mixed }
+
+// Diff classifies the move from old to new.
+func Diff(old, new *Decl) (Change, []string) {
+	var added, removed []string
+
+	oldF, newF := forbidSet(old), forbidSet(new)
+	for f := range newF {
+		if !oldF[f] {
+			added = append(added, "+ forbid "+f)
+		}
+	}
+	for f := range oldF {
+		if !newF[f] {
+			removed = append(removed, "- forbid "+f)
+		}
+	}
+
+	// A layer that grows brings more packages under its rules; one that shrinks
+	// releases packages from them. Same logic, one level down.
+	for _, name := range union(old.Order, new.Order) {
+		o, inOld := old.Layers[name]
+		n, inNew := new.Layers[name]
+		switch {
+		case inOld && !inNew:
+			removed = append(removed, "- layer "+name)
+			continue
+		case !inOld && inNew:
+			added = append(added, "+ layer "+name)
+			continue
+		}
+		os, ns := set(o), set(n)
+		for p := range ns {
+			if !os[p] {
+				added = append(added, fmt.Sprintf("+ %s covers %s", name, p))
+			}
+		}
+		for p := range os {
+			if !ns[p] {
+				removed = append(removed, fmt.Sprintf("- %s no longer covers %s", name, p))
+			}
+		}
+	}
+
+	sort.Strings(added)
+	sort.Strings(removed)
+	detail := append(added, removed...)
+
+	switch {
+	case len(added) == 0 && len(removed) == 0:
+		return NoChange, nil
+	case len(removed) == 0:
+		return Tightening, detail
+	case len(added) == 0:
+		return Loosening, detail
+	default:
+		return Mixed, detail
+	}
+}
+
+func forbidSet(d *Decl) map[string]bool {
+	out := map[string]bool{}
+	for _, f := range d.Forbids {
+		out[f.String()] = true
+	}
+	return out
+}
+
+func set(xs []string) map[string]bool {
+	out := map[string]bool{}
+	for _, x := range xs {
+		out[x] = true
+	}
+	return out
+}
+
+func union(a, b []string) []string {
+	seen, out := map[string]bool{}, []string{}
+	for _, xs := range [][]string{a, b} {
+		for _, x := range xs {
+			if !seen[x] {
+				seen[x] = true
+				out = append(out, x)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// FormatDiff renders a classification for a CI comment.
+func FormatDiff(c Change, detail []string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "architecture declaration: %s\n", c)
+	for _, d := range detail {
+		fmt.Fprintf(&b, "  %s\n", d)
+	}
+	if c.NeedsReview() {
+		b.WriteString("\nThis weakens the declared architecture. It needs a second reviewer\n" +
+			"and a `## Why` entry in the same file saying what changed and what for.\n")
+	}
+	return b.String()
+}

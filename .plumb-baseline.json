@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "commit": "84c645a58694e80ab940d6f1c25b0568590d9c8c",
+  "tolerated": {},
+  "caps": {
+    "maxCyclomatic": 0,
+    "maxCognitive": 0,
+    "maxNesting": 0
+  }
+}

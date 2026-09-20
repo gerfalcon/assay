@@ -78,3 +78,13 @@ jobs:
         run: |
           go run ./cmd/ratchet scan .
           go run ./cmd/ratchet check .
+
+      - name: Codebase obeys its own declared architecture
+        run: go run ./cmd/plumb check .
+
+      # Tightening is free; loosening the declaration needs a second reviewer.
+      - name: Classify architecture declaration changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "${{ github.base_ref }}"
+          go run ./cmd/plumb diff . --base "origin/${{ github.base_ref }}"

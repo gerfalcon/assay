@@ -1,7 +1,7 @@
 BIN  := bin
-CMDS := ratchet strata lens docket
+CMDS := ratchet strata lens docket plumb
 
-.PHONY: all build test race cover check clean install
+.PHONY: all build test race cover check arch clean install
 
 all: build
 
@@ -30,8 +30,12 @@ cover:
 	@go test -count=1 -coverprofile=/tmp/assay-unit.out ./internal/... ./pkg/... >/dev/null
 	@go tool cover -func=/tmp/assay-unit.out | tail -1
 
+## arch: does this codebase obey the architecture it declares?
+arch: build
+	@./$(BIN)/plumb check .
+
 ## check: what CI runs, minus the build matrix
-check: build race
+check: build race arch
 	@gofmt -l . | grep -v testdata && { echo "not gofmt'd"; exit 1; } || true
 	go vet ./...
 	./$(BIN)/ratchet check .
