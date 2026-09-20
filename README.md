@@ -12,10 +12,10 @@ strata query --repo myservice --metric cognitive.p90 --since 2026-01 --format cs
 
 ## Why
 
-Sonar and Codacy charge per seat, largely for a *platform* — server, storage,
-ingestion, dashboards. AI made building that kind of platform cheap. It did not
-make **good rules** cheap: authoring a syntactically valid rule takes seconds,
-knowing whether it is mostly noise still takes judgement and real codebases.
+Most of a code-quality product is *platform* — server, storage, ingestion,
+dashboards — and AI made that kind of platform cheap to build. It did not make
+**good rules** cheap: authoring a syntactically valid rule takes seconds, knowing
+whether it is mostly noise still takes judgement and real codebases.
 
 So the value is not the tool. It is the **rule corpus and the precision data
 behind it** — the part that compounds, because it is accumulated judgement.
