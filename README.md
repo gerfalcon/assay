@@ -23,26 +23,26 @@ behind it** — the part that compounds, because it is accumulated judgement.
 ## The contract is the format
 
 Composability comes from a shared data format, not from good module boundaries.
-`ls | grep | wc` works because of text. Three versioned JSONL records:
+`ls | grep | wc` works because of text. Four versioned JSONL records:
 
 | record | what it says |
 |---|---|
 | `finding` | something is wrong at this location |
 | `measure` | this number, this commit, this scope (project/module/file/function) |
 | `verdict` | a human judged this finding |
+| `ticket` | this cohort of findings is tracked as one issue |
 
-`schemas/*.json` is the specification. The Go types in `pkg/schema` are one
-implementation — a conforming tool in any language composes with these.
+The record types in `pkg/schema` are the specification, and the JSONL they
+produce is the contract — a conforming tool in any language composes with these.
 
 ## Tools
 
 | | |
 |---|---|
-| **`ratchet`** | the gate. `scan`, `import` (SARIF from any linter), `check`, `history` |
-| **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat` |
+| **`ratchet`** | the gate. `scan`, `baseline`, `check`, `import` (SARIF from any linter), `history`, `exceptions`, `learn` |
+| **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
-| **`rulebook`** | *(not built)* rules + verdicts + measured precision |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -88,8 +88,8 @@ rules/local/   project-specific, in the repo being analysed
 ```
 
 Resolution is local → org → core, most specific wins. A rule is **promoted on
-evidence**: run against ≥N repositories, ≥M verdicts, precision ≥0.8, judgements
-from ≥2 organisations.
+evidence**: by default, judgements from ≥2 organisations across ≥3 repositories,
+≥50 verdicts, and precision ≥0.80 (`strata promote-check`).
 
 **Precision data is portable even when code is not.** An organisation can
 contribute "47 findings, 41 confirmed, 6 false positives" for a rule without
@@ -136,8 +136,9 @@ no tracker at all.
 ```
 .assay/
   measures/2026/09/19.jsonl      date-partitioned, append-only
-  findings/2026/09/19T1000-sha.jsonl
+  findings/2026/09/19.jsonl
   verdicts/verdicts.jsonl        append-only log, last write wins
+  tickets/tickets.jsonl          append-only log of ticket events
   rollup/                        derived cache, always rebuildable
 ```
 
@@ -156,6 +157,7 @@ with function-level detail lands in the low hundreds of MB.
 go install github.com/sherzing/assay/cmd/ratchet@latest
 go install github.com/sherzing/assay/cmd/strata@latest
 go install github.com/sherzing/assay/cmd/lens@latest
+go install github.com/sherzing/assay/cmd/docket@latest
 ```
 
 Single Go module, one binary per `cmd/` — install only what you want. The shared

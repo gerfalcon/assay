@@ -301,7 +301,7 @@ strata rollup --period month --metric cognitive.p90
 ```
 .assay/
   measures/2026/09/19.jsonl      date-partitioned, append-only
-  findings/2026/09/19T1000-sha.jsonl
+  findings/2026/09/19.jsonl
   verdicts/verdicts.jsonl        append-only log, last write wins
   rollup/                        derived cache — safe to delete and rebuild
 ```

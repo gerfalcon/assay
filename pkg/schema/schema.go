@@ -1,10 +1,10 @@
-// Package schema defines the three record types every assay tool reads and writes.
+// Package schema defines the record types every assay tool reads and writes.
 //
 // THE CONTRACT IS THE FORMAT, NOT THIS PACKAGE. Unix composability comes from a
 // shared data format — `ls | grep | wc` works because of text, not because of
-// interfaces. These Go types are one implementation of the JSON Schemas in
-// ../../schemas/; a conforming tool can be written in any language and will
-// compose with ours over a pipe.
+// interfaces. These Go types and the JSONL they produce are the specification;
+// a conforming tool can be written in any language and will compose with ours
+// over a pipe.
 //
 // Everything is JSON Lines: one record per line, streamable, greppable, and
 // readable without any of our binaries. That last property is deliberate — see
