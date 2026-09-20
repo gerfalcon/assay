@@ -1,2 +1,17 @@
+# Build output. `make build` puts everything here, so one entry covers every
+# tool that will ever exist — including ones not written yet.
+/bin/
+
+# `go build ./...` from the repo root drops binaries beside the source instead.
+# These named entries are a backstop for that; the CI guard in test.yml is the
+# real safety net, because an allowlist of names fails OPEN — a compiled binary
+# once reached the public module zip because /ratchet was listed and /lens was
+# not, and module zips are immutable.
 /ratchet
+/strata
 /lens
+/docket
+
+# Coverage output
+cover.out
+*.out
