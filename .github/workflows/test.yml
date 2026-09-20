@@ -13,6 +13,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the author-email check needs history, not a shallow tip
+
+      # Five commits once landed as `svh@lxhome.tail556c33.ts.net` — git's
+      # username@hostname fallback, used silently when user.email is UNSET.
+      # They reached a public repo inside a published tag. A local hook is
+      # skippable with --no-verify and does not travel between machines; this
+      # does both.
+      - name: Commit authorship
+        run: |
+          allowed="sven.herzing@gmail.com"
+          range="${{ github.event_name == 'pull_request'
+                     && format('origin/{0}..HEAD', github.base_ref)
+                     || format('{0}..{1}', github.event.before, github.sha) }}"
+          # First push to a branch reports an all-zero "before"; check the tip.
+          case "$range" in *0000000000000000000000000000000000000000*) range="HEAD~1..HEAD" ;; esac
+          bad=$(git log --format='%H %ae %ce' "$range" 2>/dev/null \
+                | awk -v ok="$allowed" '$2 != ok || $3 != ok')
+          if [ -n "$bad" ]; then
+            echo "commits with an unapproved author or committer email:"
+            echo "$bad"
+            echo
+            echo "allowed: $allowed"
+            echo "if it looks like user@hostname, user.email was unset on that machine."
+            echo "prevent it everywhere: git config --global user.useConfigOnly true"
+            exit 1
+          fi
+
       - uses: actions/setup-go@v5
         with:
           go-version: stable

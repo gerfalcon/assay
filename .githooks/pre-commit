@@ -1,0 +1,41 @@
+#!/bin/sh
+# Refuse a commit whose author email is not on the allowlist.
+#
+# This exists because five commits landed as `svh@lxhome.tail556c33.ts.net` —
+# git's username@hostname fallback, which it uses silently when user.email is
+# UNSET. Nothing warned, and the address reached a public repository inside a
+# published tag.
+#
+# Enable once per clone:
+#     git config core.hooksPath .githooks
+#
+# A hook is local and skippable with --no-verify, so it is the fast feedback,
+# not the guarantee. The guarantee is the CI check in .github/workflows/test.yml,
+# which runs on every push whatever machine produced the commit.
+
+allowed="sven.herzing@gmail.com"
+
+email=$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')
+
+for ok in $allowed; do
+    [ "$email" = "$ok" ] && exit 0
+done
+
+cat >&2 <<EOF
+commit refused: author email is "$email"
+
+  allowed: $allowed
+
+If that address looks like user@hostname, git invented it because user.email is
+not set here. Fix it for this repository:
+
+    git config user.email "sven.herzing@gmail.com"
+
+And stop git guessing anywhere, on every machine you use:
+
+    git config --global user.useConfigOnly true
+
+That makes git REFUSE to commit when user.email is unset, instead of quietly
+deriving one from your login and hostname.
+EOF
+exit 1
