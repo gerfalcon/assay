@@ -34,6 +34,8 @@ Composability comes from a shared data format, not from good module boundaries.
 
 The record types in `pkg/schema` are the specification, and the JSONL they
 produce is the contract — a conforming tool in any language composes with these.
+A golden test pins the exact wire bytes of every record, so a field cannot be
+renamed without breaking a build.
 
 ## Tools
 
@@ -160,8 +162,18 @@ go install github.com/sherzing/assay/cmd/lens@latest
 go install github.com/sherzing/assay/cmd/docket@latest
 ```
 
-Single Go module, one binary per `cmd/` — install only what you want. The shared
-packages are an implementation convenience; the interop contract is the JSONL.
+Single Go module, one binary per `cmd/` — install only what you want. No
+external dependencies: everything outside the standard library is in this
+repository. The shared packages are an implementation convenience; the interop
+contract is the JSONL.
+
+Building locally instead:
+
+```sh
+make build        # every tool into ./bin, which is gitignored
+make check        # what CI runs: build, -race tests, vet, gofmt, self-check
+make cover        # coverage, including the out-of-process cmd/ tests
+```
 
 ## It measures itself
 
@@ -184,3 +196,13 @@ because the error paths that had been swallowed inside a walk closure became
 honest return values once the function was split.
 
 If it cannot hold its own line, it has no standing to hold anyone else's.
+
+## Licence
+
+[Apache License 2.0](LICENSE).
+
+Chosen over MIT for two clauses that matter to a corpus built from many
+organisations: the **patent grant** (§3), so a company contributing a rule knows
+what it is granting and receiving, and **§5**, which puts contributions under the
+same licence automatically — so there is no CLA standing between a team and a
+pull request.
