@@ -279,3 +279,23 @@ func TestDiffClassifiesTighteningAndLoosening(t *testing.T) {
 	put("layer domain internal/domain\nlayer infra internal/impl internal/helper\nforbid infra -> domain\n")
 	bin.Run(t, dir, "diff", ".", "--base", "baseref").MustFail(t).MustSay(t, "second reviewer")
 }
+
+// Test files legitimately reach infrastructure — a domain test may well spin up
+// the real store — so following test imports is opt-in. This drives the flag
+// through `go list`, which is the only way to prove the wiring: a unit test on
+// a synthetic graph would just be asserting that two different graphs differ.
+func TestTestImportsAreOptIn(t *testing.T) {
+	bin := plumb(t)
+	dir := fixture(t) // production code is clean
+
+	// A test in the domain package that reaches infrastructure.
+	if err := os.WriteFile(filepath.Join(dir, "internal/domain/domain_test.go"),
+		[]byte("package domain\n\nimport (\n\t\"testing\"\n\n\t\"example.com/shop/internal/impl\"\n)\n\n"+
+			"func TestE(t *testing.T) { _ = impl.Query() }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	bin.Run(t, dir, "scan", ".").MustPass(t).MustSay(t, "0 violations")
+	bin.Run(t, dir, "scan", ".", "--include-tests").MustPass(t).
+		MustSay(t, "1 violations", "internal/domain → internal/impl")
+}
