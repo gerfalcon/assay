@@ -11,8 +11,8 @@ the one package another organisation's tool might import, and a tool in another
 language must be able to reimplement it from the record types alone. If it
 reached into `internal/`, the contract would quietly acquire our implementation.
 
-**The tools do not import each other.** `ratchet`, `strata`, `lens`, `docket`
-and `plumb` compose over JSONL, not over Go symbols. A dependency between two of
+**The tools do not import each other.** `ratchet`, `strata`, `lens`, `docket`,
+`plumb` and `judge` compose over JSONL, not over Go symbols. A dependency between two of
 them would make the composability claim false in the one place it is easiest to
 check, and would mean installing one pulled in another.
 
@@ -27,7 +27,7 @@ nobody could see.
 
 ```arch
 layer schema      pkg/schema
-layer analysis    internal/analyze internal/arch internal/learn
+layer analysis    internal/analyze internal/arch internal/learn internal/judge
 layer presenting  internal/report
 layer internals   internal/baseline internal/store internal/docket internal/evidence internal/model internal/sarif internal/verdict
 

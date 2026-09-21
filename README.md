@@ -46,6 +46,7 @@ renamed without breaking a build.
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
 | **`plumb`** | verify dependencies and ownership against the declaration. `scan`, `check`, `baseline`, `diff`, `learn` |
+| **`judge`** | ask a model whether declarations belong where they are, cited against the document. `scan`, `doctor` |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -191,6 +192,32 @@ need a Go module. Adding a term is a tightening; removing or transferring one is
 a loosening that `plumb diff` sends to a second reviewer. Adopt it the same way
 as layering: draft, edit, `plumb baseline`, and the ratchet blocks new drift
 from then on.
+
+
+### Judgement: does it make sense here
+
+Both plumb rules are blind to a function named `ApplyDiscount` in cart that
+actually averages ratings. `judge` reads the body and the prose of
+ARCHITECTURE.md and asks one question per declaration: does this belong in the
+layer it sits in, and which sentence of the document says so.
+
+```sh
+judge scan . --base origin/main --provider anthropic          # this PR
+judge scan . --provider gemini --model gemini-2.5-pro --emit findings | ratchet import -
+```
+
+It is built as one more linter, not an oracle. Every finding must quote a
+sentence that exists verbatim in the document, or it is dropped and counted.
+The fingerprint is the symbol, not the explanation, so the baseline survives a
+model that words things differently each run. The rule id carries the prompt
+version, so precision is measured per prompt and per model like any other
+rule — which is how you find out whether a local model is good enough for your
+repository, rather than arguing about it. Findings are warnings until a team
+has that number and chooses to gate.
+
+Adapters: Anthropic (native, with the document cached across calls), Gemini,
+and OpenAI including Codex models. Responses are cached on disk, so a rerun on
+an unchanged tree costs nothing and a whole-repo pass is incremental.
 
 ## Why
 
