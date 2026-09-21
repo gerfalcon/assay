@@ -1,5 +1,6 @@
-// Command plumb checks a codebase against the architecture declared in
-// ARCHITECTURE.md.
+// Command plumb checks a codebase's dependencies against the layering declared
+// in ARCHITECTURE.md. It verifies which packages may reach which; it says nothing
+// about whether a package's contents belong there.
 //
 // A plumb line is the oldest conformance tool there is: you declare vertical,
 // and the string tells you the truth. It does not have an opinion about where
@@ -21,7 +22,7 @@ import (
 	"github.com/sherzing/assay/pkg/schema"
 )
 
-const usage = `plumb — check a codebase against the architecture it declares
+const usage = `plumb — verify dependencies against the layering the codebase declares
 
   plumb check [dir]      fail on violations not in the baseline
   plumb scan  [dir]      report every violation, exit 0

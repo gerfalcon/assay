@@ -390,7 +390,7 @@ same module — those are cohesion, not shotgun surgery.
 
 `jscpd` (MIT) or PMD CPD (BSD). Neither is built in.
 
-### Architecture conformance
+### Dependency conformance
 
 Declare your layering once, enforce it forever:
 

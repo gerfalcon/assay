@@ -45,7 +45,7 @@ renamed without breaking a build.
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
-| **`plumb`** | check the codebase against the architecture it declares. `scan`, `check`, `baseline`, `diff` |
+| **`plumb`** | verify dependencies against the declared layering. `scan`, `check`, `baseline`, `diff` |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -134,10 +134,12 @@ something whose ticket someone closed. `--yes` is required to touch a tracker;
 without it everything is a preview. `--provider file` writes markdown and needs
 no tracker at all.
 
-## Architecture conformance
+## Dependency conformance
 
-`plumb` answers one question: **does this code obey the architecture we chose?**
-It does not try to answer whether the architecture is any good. That distinction
+`plumb` answers one question: **do the dependencies obey the layering we chose?**
+It does not try to answer whether the layering is any good, and it does not
+judge whether a package's contents belong in it — that is a different question,
+about responsibility rather than reachability, and it needs a different rule. That distinction
 is the whole design, and it is not fastidiousness — SmellBench (2026) found
 **63.1%** of detected hard-severity architectural smells were expert-judged
 false positives. Tools that look for bad architecture without being told what
