@@ -45,7 +45,7 @@ renamed without breaking a build.
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
-| **`plumb`** | verify dependencies against the declared layering. `scan`, `check`, `baseline`, `diff` |
+| **`plumb`** | verify dependencies and ownership against the declaration. `scan`, `check`, `baseline`, `diff`, `learn` |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -158,6 +158,39 @@ layer domain   internal/domain
 layer infra    internal/impl internal/store
 forbid domain -> infra
 ```
+
+
+### Ownership: what a layer may declare
+
+Layering answers "may cart reach rating". It cannot answer "does this belong in
+cart". Rating logic inside a cart service can be perfectly layered and still be
+in the wrong place, and no import graph will see it. What sees it is vocabulary:
+what the code *declares*, not what it imports.
+
+```
+owns cart     cart line-item checkout
+owns rating   rating review score
+```
+
+A type or function declared in `cart` whose name carries rating's vocabulary is
+a `responsibility-drift` finding. Cart *calling* rating's API is fine, and
+layering already governs it. A layer with no `owns` line is a consumer and is
+never checked, which is what keeps a presentation layer that legitimately
+declares a `RatingPage` quiet.
+
+The vocabulary is written by a human, because it is intent, and intent is the
+one thing a scan cannot recover from code. `plumb learn` drafts a starting list
+from what each layer declares — roughly half right in practice, which is the
+point: a list to strike through rather than a blank page. The misses are
+instructive: homonyms ("sheet" as a spreadsheet and as a bottom sheet), and
+stems that are noise in one codebase and a concept in another. One line of
+human judgement resolves each.
+
+`owns` works on Go, C#, Dart, TypeScript, Java, Kotlin and Python, and does not
+need a Go module. Adding a term is a tightening; removing or transferring one is
+a loosening that `plumb diff` sends to a second reviewer. Adopt it the same way
+as layering: draft, edit, `plumb baseline`, and the ratchet blocks new drift
+from then on.
 
 ## Why
 

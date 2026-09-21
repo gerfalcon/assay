@@ -299,3 +299,37 @@ func TestTestImportsAreOptIn(t *testing.T) {
 	bin.Run(t, dir, "scan", ".", "--include-tests").MustPass(t).
 		MustSay(t, "1 violations", "internal/domain → internal/impl")
 }
+
+// Ownership end to end, on a repository that is NOT a Go module: a C# service.
+// The forbid rule needs `go list`; the owns rule must not.
+func TestOwnershipDriftOnNonGoRepo(t *testing.T) {
+	bin := plumb(t)
+	dir := cmdtest.Tree(t, map[string]string{
+		"ARCHITECTURE.md": "# Architecture\n\n```arch\n" +
+			"layer cart    src/Cart\n" +
+			"layer rating  src/Rating\n" +
+			"layer web     src/Web\n" +
+			"owns cart     cart checkout\n" +
+			"owns rating   rating review\n" +
+			"```\n",
+		"src/Cart/CartService.cs":     "public class CartService {\n  public Cart Get(int id) { }\n}\n",
+		"src/Rating/RatingService.cs": "public class RatingService {\n  public Rating Average(int id) { }\n}\npublic class RatingRepository { }\n",
+		"src/Web/RatingPage.cs":       "public class RatingPage { }\n",
+	})
+
+	bin.Run(t, dir, "scan", ".").MustPass(t).MustSay(t, "0 responsibility drifts")
+	bin.Run(t, dir, "baseline", ".").MustPass(t)
+	bin.Run(t, dir, "check", ".").MustPass(t)
+
+	// Rating logic grows inside cart. No import changed; layering is silent.
+	cmdtest.WriteFile(t, dir, "src/Cart/CartRating.cs",
+		"public class CartRating {\n  public void SubmitReview(int stars) { }\n}\n")
+	r := bin.Run(t, dir, "check", ".").MustFail(t)
+	r.MustSay(t, "responsibility-drift", "CartRating", "SubmitReview", "rating's vocabulary")
+
+	// Emitted findings carry the rule, so strata and docket compose over them.
+	bin.Run(t, dir, "scan", ".", "--emit", "findings").MustPass(t).MustSay(t, `"rule":"responsibility-drift"`)
+
+	// And the draft points at the vocabulary that is actually there.
+	bin.Run(t, dir, "learn", ".", "--min", "1", "--share", "0.5").MustPass(t).MustSay(t, "owns cart", "owns rating")
+}

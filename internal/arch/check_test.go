@@ -256,7 +256,7 @@ func TestReportCarriesTheDeclarationSHA(t *testing.T) {
 	d := mustParse(t, layered)
 	d.SHA = "abc123"
 	g := graphOf(t, "example.com/shop", "internal/domain: internal/impl", "internal/impl:")
-	rep := Report(d, g, Check(d, g))
+	rep := Report(d, g, Check(d, g), nil)
 	if len(rep.Findings) != 1 {
 		t.Fatalf("got %d findings", len(rep.Findings))
 	}

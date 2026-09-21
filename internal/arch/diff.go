@@ -83,6 +83,22 @@ func Diff(old, new *Decl) (Change, []string) {
 		}
 	}
 
+	// Ownership: a term added is one more thing that can drift, so it tightens;
+	// a term removed releases every declaration that carried it.
+	for _, name := range union(old.OwnsOrder, new.OwnsOrder) {
+		os, ns := set(old.Owns[name]), set(new.Owns[name])
+		for t := range ns {
+			if !os[t] {
+				added = append(added, fmt.Sprintf("+ %s owns %s", name, t))
+			}
+		}
+		for t := range os {
+			if !ns[t] {
+				removed = append(removed, fmt.Sprintf("- %s no longer owns %s", name, t))
+			}
+		}
+	}
+
 	sort.Strings(added)
 	sort.Strings(removed)
 	detail := append(added, removed...)
