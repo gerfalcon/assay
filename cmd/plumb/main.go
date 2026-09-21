@@ -305,12 +305,24 @@ func cmdLearn(args []string) error {
 	if err != nil {
 		return err
 	}
+	// The draft is a list of this codebase's own domain vocabulary, with usage
+	// counts. That is internal information by nature — more revealing than any
+	// finding, because it names the business concepts rather than a defect.
+	// Warned on stderr so it survives `plumb learn . > draft.txt`.
+	fmt.Fprint(os.Stderr, "note: this draft lists your internal domain vocabulary with counts.\n"+
+		"      Review it before pasting anywhere public.\n\n")
 	if d == nil {
 		fmt.Printf("# no %s — contexts are directories at depth %d; replace them with layer names\n", o.doc, o.depth)
 	}
 	fmt.Print(arch.FormatDraft(lines))
-	fmt.Print("\n# This is a draft, not a finding. Strike the homonyms and the noise, keep five to\n" +
-		"# ten terms per layer, paste the rest into the arch block, then `plumb scan`.\n")
+	fmt.Print("\n# This is a draft, not a finding.\n" +
+		"#   1. Strike utility packages ENTIRELY — they own no vocabulary, only the\n" +
+		"#      generic words mechanism is written in. Marked above where detected.\n" +
+		"#   2. Strike generic verbs and adjectives: modify, applied, general, unknown,\n" +
+		"#      where, access, content. A term that could name anything names nothing,\n" +
+		"#      and owning one flags every use of it in the codebase.\n" +
+		"#   3. Keep five to ten terms per layer, paste the rest into the arch block,\n" +
+		"#      then `plumb scan` and read every finding.\n")
 	return nil
 }
 

@@ -166,3 +166,118 @@ func TestLearnDraftsFromDeclarations(t *testing.T) {
 		t.Errorf("term below min leaked into draft:\n%s", out)
 	}
 }
+
+// THE LOAD-BEARING TEST for extraction.
+//
+// Every language must admit the same THING — the public surface — however that
+// language spells it. If one admits private declarations and another does not,
+// the same misplacement counts in one codebase and not the other, and measured
+// precision becomes language-dependent. That is fatal for a corpus whose whole
+// currency is precision compared across organisations.
+//
+// Python's pattern once admitted `_private_helper` while Go's rejected
+// `privateHelper`.
+func TestPublicSurfaceOnlyAcrossLanguages(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Each file declares one PUBLIC and one PRIVATE thing carrying the same
+	// concept. Only the public one may be extracted.
+	write("cart/a.go", "package cart\n\ntype RatingBadge struct{}\n\nfunc ratingHelper() {}\n")
+	write("cart/b.py", "class RatingBadge:\n    pass\n\ndef _rating_helper():\n    pass\n")
+	write("cart/c.dart", "class RatingBadge {}\nclass _RatingHelper {}\n")
+	write("cart/d.cs", "public class RatingBadge { }\nprivate class RatingHelperPrivate { }\n")
+	write("cart/e.kt", "class RatingBadge\nprivate fun ratingHelper() {}\n")
+	write("rating/r.go", "package rating\n\ntype Rating struct{}\n")
+
+	d := mustParse(t, "layer cart cart\nlayer rating rating\nowns rating rating\n")
+	got, err := ScanDecls(root, d, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perFile := map[string][]string{}
+	for _, dc := range got {
+		perFile[filepath.Ext(dc.File)] = append(perFile[filepath.Ext(dc.File)], dc.Name)
+	}
+	for ext, names := range perFile {
+		sort.Strings(names)
+		for _, n := range names {
+			// The privacy marker of every language represented here: a leading
+			// underscore, a lower-case initial, or the word Private.
+			if strings.HasPrefix(n, "_") || strings.Contains(n, "Private") ||
+				(n != "" && strings.ToLower(n[:1]) == n[:1]) {
+				t.Errorf("%s extracted the private declaration %q — the net must be the public surface in every language", ext, n)
+			}
+		}
+	}
+
+	// And the public one must be found in each, or the assertion above passes
+	// vacuously on a language whose pattern matches nothing at all.
+	for _, ext := range []string{".go", ".py", ".dart", ".cs", ".kt"} {
+		found := false
+		for _, n := range perFile[ext] {
+			if n == "RatingBadge" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s did not extract the public RatingBadge: %v", ext, perFile[ext])
+		}
+	}
+}
+
+// A utility package holds mechanism, not domain, so its "vocabulary" is the
+// generic words mechanism is written in. Letting one own `content format` would
+// flag every ContentType in the codebase — so the draft must say strike the
+// LINE, not prune its terms. Depth-based discovery nominates these freely: a
+// real run drafted utils, client and web_utils alongside genuine domains.
+func TestUtilityPackagesAreMarkedNotAContext(t *testing.T) {
+	for _, layer := range []string{
+		"pkg/utils", "pkg/util", "pkg/client", "pkg/web_utils", "internal/common",
+		"src/Shared", "lib", "app/core", "pkg/helpers", "infra",
+	} {
+		if !NotAContext(layer) {
+			t.Errorf("NotAContext(%q) = false, want true — a utility package owns no vocabulary", layer)
+		}
+	}
+	// Real domains must not be swept up, or the marker becomes noise itself.
+	for _, layer := range []string{
+		"internal/cart", "internal/rating", "pkg/kafka", "internal/order-api",
+		"src/Billing", "internal/compliance-worker", "pkg/monitoring",
+	} {
+		if NotAContext(layer) {
+			t.Errorf("NotAContext(%q) = true, want false — that is a real domain", layer)
+		}
+	}
+}
+
+// The draft must flag a utility layer inline, where the reader is deciding.
+func TestFormatDraftMarksUtilityLayers(t *testing.T) {
+	out := FormatDraft([]DraftLine{
+		{Layer: "pkg/utils", Decls: 39, Terms: []TermCount{{Term: "content", Count: 6}}},
+		{Layer: "internal/cart", Decls: 120, Terms: []TermCount{{Term: "cart", Count: 15}}},
+	})
+	if !strings.Contains(out, "utility, not a context") {
+		t.Errorf("pkg/utils not marked:\n%s", out)
+	}
+	// The marker must attach to the utility line only.
+	cartLine := ""
+	for _, l := range strings.Split(out, "\n") {
+		if strings.Contains(l, "internal/cart") {
+			cartLine = l
+		}
+	}
+	if strings.Contains(cartLine, "utility") {
+		t.Errorf("a real domain was marked as utility: %q", cartLine)
+	}
+}
