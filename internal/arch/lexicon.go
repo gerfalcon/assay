@@ -109,9 +109,12 @@ func ScanDecls(root string, d *Decl, includeTests bool) ([]Declaration, error) {
 
 func scanDecls(root string, layerOf func(relDir string) (string, bool), includeTests bool) ([]Declaration, error) {
 	var out []Declaration
+	// Errors are returned, not skipped. A directory that cannot be read is a
+	// layer that cannot be checked, and a silent pass there is the failure
+	// this whole tool exists to avoid.
 	err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if e.IsDir() {
 			if p != root && skipDirs[e.Name()] {
@@ -128,7 +131,7 @@ func scanDecls(root string, layerOf func(relDir string) (string, bool), includeT
 		}
 		rel, err := filepath.Rel(root, p)
 		if err != nil {
-			return nil
+			return err
 		}
 		rel = filepath.ToSlash(rel)
 		layer, ok := layerOf(dirOf(rel))
@@ -137,7 +140,7 @@ func scanDecls(root string, layerOf func(relDir string) (string, bool), includeT
 		}
 		src, err := os.ReadFile(p)
 		if err != nil {
-			return nil
+			return err
 		}
 		line, last := 1, 0
 		for _, m := range re.FindAllSubmatchIndex(src, -1) {
