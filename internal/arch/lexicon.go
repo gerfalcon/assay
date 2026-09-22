@@ -82,6 +82,23 @@ func (d Drift) Suggest() string {
 // declPatterns extract declared names per language. Deliberately regex rather
 // than a parser per language: the check needs names, not semantics, and a
 // five-year-old service is rarely in the language its checker was written in.
+//
+// EVERY PATTERN MATCHES THE PUBLIC SURFACE ONLY, spelled the way each language
+// spells it — an initial capital in Go, no leading underscore in Python, a
+// capital or `public` elsewhere. The PRINCIPLE has to be consistent, not the
+// character class: a private helper's blast radius stops at its own package,
+// so a misplaced one is a far weaker signal than a misplaced type that other
+// contexts consume.
+//
+// Getting this wrong makes measured precision LANGUAGE-DEPENDENT, which is
+// fatal for a corpus whose currency is precision compared across
+// organisations. Python's pattern admitted `_private_helper` while Go's
+// rejected `privateHelper`, so the same misplacement counted in one language
+// and not the other. TestPublicSurfaceOnlyAcrossLanguages pins it.
+//
+// Known limits, both erring towards silence: misplaced PRIVATE declarations are
+// not seen at all, and in TypeScript a lower-case exported function is missed
+// because `export` is not reliably on the same line as the name.
 var declPatterns = map[string]*regexp.Regexp{
 	".go":   regexp.MustCompile(`(?m)^(?:func\s+(?:\([^)]*\)\s*)?|type\s+)([A-Z][A-Za-z0-9_]*)`),
 	".cs":   regexp.MustCompile(`\b(?:class|record|interface|struct|enum)\s+([A-Z][A-Za-z0-9_]*)|\bpublic\s+(?:static\s+|async\s+|virtual\s+|override\s+|sealed\s+)*[A-Za-z0-9_<>\[\],.?]+\s+([A-Z][A-Za-z0-9_]*)\s*\(`),
@@ -90,7 +107,52 @@ var declPatterns = map[string]*regexp.Regexp{
 	".tsx":  regexp.MustCompile(`\b(?:class|interface|type|enum|function)\s+([A-Z][A-Za-z0-9_]*)`),
 	".java": regexp.MustCompile(`\b(?:class|interface|enum|record)\s+([A-Z][A-Za-z0-9_]*)`),
 	".kt":   regexp.MustCompile(`\b(?:class|interface|object|fun)\s+([A-Z][A-Za-z0-9_]*)`),
-	".py":   regexp.MustCompile(`(?m)^\s*(?:class|def)\s+([A-Za-z_][A-Za-z0-9_]*)`),
+	// Python names the public surface by the ABSENCE of a leading underscore,
+	// and uses snake_case for functions — so requiring a capital would reject
+	// nearly every function, and allowing `_` would admit every private one.
+	".py": regexp.MustCompile(`(?m)^\s*(?:class|def)\s+([A-Za-z][A-Za-z0-9_]*)`),
+}
+
+// privateMarkers are keywords that put a declaration below the public surface
+// in languages that spell visibility with a word rather than with the name.
+//
+// Needed because Go's RE2 has no lookbehind, so a pattern cannot say "class,
+// but not preceded by private". Checked against the text BEFORE the matched
+// name rather than the whole line, so `public class Cart { private int n; }`
+// is not mistaken for a private declaration.
+//
+// `internal` is deliberately absent for both C# and Kotlin: it means
+// assembly- or module-visible, which within one service IS the surface other
+// contexts consume. An unmarked C# type is internal by default, and plenty of
+// codebases never write `public` on one.
+var privateMarkers = map[string][]string{
+	".cs":   {"private", "protected"},
+	".java": {"private", "protected"},
+	".kt":   {"private", "protected"},
+	".ts":   {"private"},
+	".tsx":  {"private"},
+}
+
+// belowSurface reports whether the declaration matched at off is marked private
+// in a language that says so with a keyword.
+func belowSurface(ext string, src []byte, off int) bool {
+	markers, ok := privateMarkers[ext]
+	if !ok {
+		return false
+	}
+	start := 0
+	if i := strings.LastIndexByte(string(src[:off]), '\n'); i >= 0 {
+		start = i + 1
+	}
+	prefix := string(src[start:off])
+	for _, m := range markers {
+		for _, f := range strings.Fields(prefix) {
+			if f == m {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 var testFileRe = regexp.MustCompile(`(_test\.go|Tests?\.cs|_test\.dart|\.(test|spec)\.tsx?|Test\.(java|kt)|^test_.*\.py)$`)
@@ -153,7 +215,7 @@ func scanDecls(root string, layerOf func(relDir string) (string, bool), includeT
 					break
 				}
 			}
-			if name != "" {
+			if name != "" && !belowSurface(filepath.Ext(p), src, m[0]) {
 				out = append(out, Declaration{Layer: layer, Name: name, File: rel, Line: line})
 			}
 		}
@@ -453,7 +515,40 @@ func FormatDraft(lines []DraftLine) string {
 			ts = append(ts, t.Term)
 			ev = append(ev, fmt.Sprintf("%s:%d", t.Term, t.Count))
 		}
+		mark := ""
+		if NotAContext(l.Layer) {
+			mark = "   # ↑ utility, not a context — strike this whole line"
+		}
 		fmt.Fprintf(&b, "owns %-*s %s   # %d decls; %s\n", width, l.Layer, strings.Join(ts, " "), l.Decls, strings.Join(ev, " "))
+		if mark != "" {
+			fmt.Fprintf(&b, "%s\n", mark)
+		}
 	}
 	return b.String()
+}
+
+// utilityNames are the last path segments of packages that hold mechanism
+// rather than domain.
+var utilityNames = map[string]bool{
+	"utils": true, "util": true, "helpers": true, "helper": true, "common": true,
+	"shared": true, "lib": true, "internal": true, "core": true, "base": true,
+	"misc": true, "tools": true, "client": true, "clients": true, "pkg": true,
+	"web_utils": true, "webutils": true, "infra": true, "infrastructure": true,
+}
+
+// NotAContext reports whether a drafted layer is a utility package rather than
+// a domain context.
+//
+// A utility package has no vocabulary of its own — it has the generic words
+// that mechanism is written in. Letting one own `content format` would flag
+// every ContentType in the codebase, so the fix is to strike the LINE, not to
+// prune its terms, and the draft should say so. Depth-based context discovery
+// nominates these freely: a real run drafted utils, client and web_utils
+// alongside genuine domains.
+func NotAContext(layer string) bool {
+	seg := layer
+	if i := strings.LastIndexByte(seg, '/'); i >= 0 {
+		seg = seg[i+1:]
+	}
+	return utilityNames[strings.ToLower(seg)]
 }
