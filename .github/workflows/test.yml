@@ -24,8 +24,10 @@ jobs:
       - name: Commit authorship
         run: |
           allowed="sven.herzing@gmail.com"
+          # On a pull request HEAD is GitHub's synthetic merge commit, committed
+          # as noreply@github.com; range to the branch tip instead.
           range="${{ github.event_name == 'pull_request'
-                     && format('origin/{0}..HEAD', github.base_ref)
+                     && format('origin/{0}..{1}', github.base_ref, github.event.pull_request.head.sha)
                      || format('{0}..{1}', github.event.before, github.sha) }}"
           # First push to a branch reports an all-zero "before"; check the tip.
           case "$range" in *0000000000000000000000000000000000000000*) range="HEAD~1..HEAD" ;; esac

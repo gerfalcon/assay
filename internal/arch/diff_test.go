@@ -80,12 +80,12 @@ func TestReorderingIsNotAChange(t *testing.T) {
 
 func TestFormatDiffWarnsOnlyWhenWeakened(t *testing.T) {
 	c, detail := Diff(mustParse(t, base+"layer s q\nforbid s -> infra\n"), mustParse(t, base))
-	out := FormatDiff(c, detail)
+	out := FormatDiff(c, detail, nil)
 	if !strings.Contains(out, "second reviewer") {
 		t.Errorf("a loosening did not ask for review:\n%s", out)
 	}
 	c2, d2 := Diff(mustParse(t, base), mustParse(t, base+"layer s q\nforbid s -> infra\n"))
-	if strings.Contains(FormatDiff(c2, d2), "second reviewer") {
+	if strings.Contains(FormatDiff(c2, d2, nil), "second reviewer") {
 		t.Error("a tightening asked for review; the process will be routed around")
 	}
 }

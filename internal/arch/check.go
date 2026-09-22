@@ -103,8 +103,15 @@ func (v Violation) Suggest() string {
 // Report converts violations into the shared finding model, so plumb composes
 // with the ratchet, the store and the ticketing tool without any of them
 // knowing what an architecture is.
-func Report(d *Decl, g *Graph, vs []Violation) *model.Report {
-	rep := &model.Report{Root: g.Module, Findings: []model.Finding{}}
+//
+// The graph is nil when the declaration has no forbid rules — an ownership-only
+// declaration on a codebase that is not a Go module still produces a report.
+func Report(d *Decl, g *Graph, vs []Violation, drifts []Drift) *model.Report {
+	rep := &model.Report{Findings: []model.Finding{}}
+	pkgs := 0
+	if g != nil {
+		rep.Root, pkgs = g.Module, len(g.Edges)
+	}
 	for _, v := range vs {
 		file := v.SrcFile
 		if file == "" {
@@ -122,7 +129,8 @@ func Report(d *Decl, g *Graph, vs []Violation) *model.Report {
 			Fingerprint: v.Fingerprint(),
 		})
 	}
-	rep.Summarise(len(g.Edges))
+	rep.Findings = append(rep.Findings, driftFindings(d, drifts)...)
+	rep.Summarise(pkgs)
 	return rep
 }
 

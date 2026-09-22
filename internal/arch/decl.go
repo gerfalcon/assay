@@ -31,6 +31,11 @@ type Decl struct {
 	Order []string
 	// Forbids are the dependency rules.
 	Forbids []Forbid
+	// Owns maps a layer to the vocabulary it owns. A layer absent from this map
+	// is a consumer and is never checked for drift. See lexicon.go.
+	Owns map[string][]string
+	// OwnsOrder is declaration order of the owning layers.
+	OwnsOrder []string
 	// SHA identifies the version of the declaration that produced a finding.
 	// Empty outside a git work tree.
 	SHA string
@@ -69,7 +74,13 @@ func ParseDoc(doc string) (*Decl, error) {
 // Parse reads the body of an arch block. lineBase is the line number in the
 // enclosing document at which the body starts.
 func Parse(body string, lineBase int) (*Decl, error) {
-	d := &Decl{Layers: map[string][]string{}}
+	d := &Decl{Layers: map[string][]string{}, Owns: map[string][]string{}}
+	type ownsStmt struct {
+		layer string
+		terms []string
+		line  int
+	}
+	var owns []ownsStmt
 
 	for i, raw := range strings.Split(body, "\n") {
 		line := raw
@@ -106,15 +117,48 @@ func Parse(body string, lineBase int) (*Decl, error) {
 			}
 			d.Forbids = append(d.Forbids, Forbid{From: g[1], To: g[2], Line: n})
 
+		case strings.HasPrefix(line, "owns "):
+			f := strings.Fields(line)
+			if len(f) < 3 {
+				return nil, fmt.Errorf("line %d: owns needs a layer and at least one term: %q", n, line)
+			}
+			terms := make([]string, 0, len(f)-2)
+			for _, t := range f[2:] {
+				terms = append(terms, strings.ToLower(t))
+			}
+			owns = append(owns, ownsStmt{layer: f[1], terms: terms, line: n})
+
 		default:
 			// Not ignored. A misspelled `forbidd` silently dropping a
 			// constraint is precisely how a gate stops meaning anything.
-			return nil, fmt.Errorf("line %d: unknown statement %q (expected `layer` or `forbid`)", n, strings.Fields(line)[0])
+			return nil, fmt.Errorf("line %d: unknown statement %q (expected `layer`, `forbid` or `owns`)", n, strings.Fields(line)[0])
 		}
 	}
 
-	if len(d.Forbids) == 0 {
-		return nil, fmt.Errorf("the arch block declares no `forbid` rules, so it enforces nothing")
+	// A term has exactly one owner. Two layers claiming "rating" is not a
+	// shared vocabulary, it is the boundary question left unanswered.
+	ownerOf := map[string]string{}
+	for _, o := range owns {
+		if _, ok := d.Layers[o.layer]; !ok {
+			return nil, fmt.Errorf("line %d: owns references undeclared layer %q", o.line, o.layer)
+		}
+		if _, seen := d.Owns[o.layer]; !seen {
+			d.OwnsOrder = append(d.OwnsOrder, o.layer)
+		}
+		for _, t := range o.terms {
+			if prev, dup := ownerOf[t]; dup && prev != o.layer {
+				return nil, fmt.Errorf("line %d: term %q is already owned by %q — a term has one owner", o.line, t, prev)
+			}
+			if ownerOf[t] == o.layer {
+				continue
+			}
+			ownerOf[t] = o.layer
+			d.Owns[o.layer] = append(d.Owns[o.layer], t)
+		}
+	}
+
+	if len(d.Forbids) == 0 && len(d.Owns) == 0 {
+		return nil, fmt.Errorf("the arch block declares no `forbid` or `owns` rules, so it enforces nothing")
 	}
 	for _, f := range d.Forbids {
 		if _, ok := d.Layers[f.From]; !ok {

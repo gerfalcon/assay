@@ -1,5 +1,22 @@
+# Build output. `make build` puts everything here, so ONE entry covers every
+# tool that will ever exist — including ones not written yet.
+/bin/
+
+# `go build ./cmd/x` from the repo root drops the binary beside the source
+# instead. These named entries are a backstop for that.
+#
+# THE NAMED LIST IS NOT THE DEFENCE. It has now failed four times: /lens was
+# missing and a 3.3 MB binary reached a published module zip; /plumb was missing
+# and CI caught it on push; then /bin/ itself was dropped while adding /plumb
+# and five binaries went into a commit; then /judge was missing on the judge branch. An allowlist of names fails OPEN — the
+# real defence is the "No committed binaries" check in .github/workflows/test.yml.
 /ratchet
-/lens
-/plumb
 /strata
+/lens
 /docket
+/plumb
+/judge
+
+# Coverage output
+cover.out
+*.out

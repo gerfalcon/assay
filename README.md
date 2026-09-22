@@ -45,7 +45,8 @@ renamed without breaking a build.
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
-| **`plumb`** | verify dependencies against the declared layering. `scan`, `check`, `baseline`, `diff` |
+| **`plumb`** | verify dependencies and ownership against the declaration. `scan`, `check`, `baseline`, `diff`, `learn` |
+| **`judge`** | ask a model whether declarations belong where they are, cited against the document. `scan`, `doctor` |
 
 Each is usable with the others absent. `strata` has nothing quality-specific in
 it — point it at any conforming stream and range queries come back.
@@ -158,6 +159,90 @@ layer domain   internal/domain
 layer infra    internal/impl internal/store
 forbid domain -> infra
 ```
+
+
+### Ownership: what a layer may declare
+
+Layering answers "may cart reach rating". It cannot answer "does this belong in
+cart". Rating logic inside a cart service can be perfectly layered and still be
+in the wrong place, and no import graph will see it. What sees it is vocabulary:
+what the code *declares*, not what it imports.
+
+```
+owns cart     cart line-item checkout
+owns rating   rating review score
+```
+
+A type or function declared in `cart` whose name carries rating's vocabulary is
+a `responsibility-drift` finding. Cart *calling* rating's API is fine, and
+layering already governs it. A layer with no `owns` line is a consumer and is
+never checked, which is what keeps a presentation layer that legitimately
+declares a `RatingPage` quiet.
+
+The vocabulary is written by a human, because it is intent, and intent is the
+one thing a scan cannot recover from code. `plumb learn` drafts a starting list
+from what each layer declares — roughly half right in practice, which is the
+point: a list to strike through rather than a blank page. The misses are
+instructive: homonyms ("sheet" as a spreadsheet and as a bottom sheet), and
+stems that are noise in one codebase and a concept in another. One line of
+human judgement resolves each.
+
+`owns` works on Go, C#, Dart, TypeScript, Java, Kotlin and Python, and does not
+need a Go module. Adding a term is a tightening; removing or transferring one is
+a loosening that `plumb diff` sends to a second reviewer. Adopt it the same way
+as layering: draft, edit, `plumb baseline`, and the ratchet blocks new drift
+from then on.
+
+
+### Judgement: does it make sense here
+
+Both plumb rules are blind to a function named `ApplyDiscount` in cart that
+actually averages ratings. `judge` reads the body and the prose of
+ARCHITECTURE.md and asks one question per declaration: does this belong in the
+layer it sits in, and which sentence of the document says so.
+
+```sh
+judge scan . --base origin/main --provider anthropic          # this PR
+judge scan . --provider gemini --model gemini-2.5-pro --emit findings | ratchet import -
+```
+
+It is built as one more linter, not an oracle. Every finding must quote a
+sentence that exists verbatim in the document, or it is dropped and counted.
+The fingerprint is the symbol, not the explanation, so the baseline survives a
+model that words things differently each run. The rule id carries the prompt
+version, so precision is measured per prompt and per model like any other
+rule — which is how you find out whether a local model is good enough for your
+repository, rather than arguing about it. Findings are warnings until a team
+has that number and chooses to gate.
+
+Responses are cached on disk, so a rerun on an unchanged tree costs nothing
+and a whole-repo pass is incremental.
+
+**Two ways to pay, one toggle.** `--provider` (or `JUDGE_PROVIDER`) selects
+who answers:
+
+| provider | bills against | when |
+|---|---|---|
+| `anthropic`, `gemini`, `openai` (Codex models by name) | an API key, per token — `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`; anthropic also honours an `ant auth login` profile | a team with API billing; CI |
+| `claude-code` (aliases `plan`, `max`) | a Claude subscription, via the Claude Code CLI in headless mode | a person with a plan and no credits |
+
+```sh
+JUDGE_PROVIDER=anthropic   judge scan . --base origin/main     # at work: per-token
+JUDGE_PROVIDER=claude-code judge scan . --base origin/main     # at home: the plan
+```
+
+The `claude-code` provider batches several declarations per call, because
+each call carries Claude Code's own context and a plan is a usage window
+rather than a per-token price. It gives the model no tools: the question is
+answered from the excerpt, exactly as with the API providers, so the two are
+comparable.
+
+The third path is the **judge skill** in `.claude/skills/judge`, for when you
+want Claude Code to read *further* than the excerpt — follow a call, open the
+test — on the plan. It lists the cases with `judge cases`, judges them in the
+session, and hands its answers to `judge verify`, which applies the same
+citation and layer checks and emits the same findings. Copy the directory to
+`~/.claude/skills/judge/` once and it is available in every repository.
 
 ## Why
 

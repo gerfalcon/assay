@@ -1,6 +1,7 @@
-// Command plumb checks a codebase's dependencies against the layering declared
-// in ARCHITECTURE.md. It verifies which packages may reach which; it says nothing
-// about whether a package's contents belong there.
+// Command plumb checks a codebase against what ARCHITECTURE.md declares: which
+// layers may reach which (`forbid`, over the import graph) and which layer owns
+// which vocabulary (`owns`, over declared names). The first is reachability;
+// the second is responsibility. Neither implies the other.
 //
 // A plumb line is the oldest conformance tool there is: you declare vertical,
 // and the string tells you the truth. It does not have an opinion about where
@@ -22,12 +23,13 @@ import (
 	"github.com/sherzing/assay/pkg/schema"
 )
 
-const usage = `plumb — verify dependencies against the layering the codebase declares
+const usage = `plumb — verify a codebase against the layering and ownership it declares
 
   plumb check [dir]      fail on violations not in the baseline
   plumb scan  [dir]      report every violation, exit 0
   plumb baseline [dir]   record today's violations as tolerated
   plumb diff  [dir]      classify a declaration change as tightening or loosening
+  plumb learn [dir]      draft owns lines from what the code declares
 
 Flags
   --doc <path>       declaration (default ARCHITECTURE.md)
@@ -37,16 +39,28 @@ Flags
   --base <ref>       git ref to diff the declaration against (default origin/main)
   --force            overwrite an existing baseline
   --tighten          drop baseline entries that no longer reproduce
+  --depth N          learn: directory depth that defines a context when no
+                     declaration exists (default 2)
+  --min N            learn: fewest declarations that must carry a term (default 3)
+  --share F          learn: fraction of a term's uses in one context (default 0.75)
 
 The declaration is a fenced ` + "```arch" + ` block inside the document:
 
-    layer domain   internal/domain
+    layer cart     internal/cart
+    layer rating   internal/rating
     layer infra    internal/impl internal/store
-    forbid domain -> infra
+    forbid cart -> infra
+    owns cart      cart line-item checkout
+    owns rating    rating review score
 
-Checks are TRANSITIVE. A direct-import rule misses domain -> helper -> infra,
-which is the same dependency one hop away and is what an ordinary refactor
-produces.
+forbid governs which packages may REACH which, transitively: a direct-import
+rule misses cart -> helper -> infra, which is the same dependency one hop away
+and is what an ordinary refactor produces.
+
+owns governs what a layer may DECLARE. A type or function in cart whose name
+carries rating's vocabulary is flagged; cart calling rating's API is not. A layer
+with no owns line is a consumer and is never checked. Only Go is supported for
+forbid; owns reads Go, C#, Dart, TypeScript, Java, Kotlin and Python.
 `
 
 func main() {
@@ -67,6 +81,8 @@ func main() {
 		err = cmdBaseline(args)
 	case "diff":
 		err = cmdDiff(args)
+	case "learn":
+		err = cmdLearn(args)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return
@@ -83,6 +99,8 @@ func main() {
 type opts struct {
 	dir, doc, file, emit, base   string
 	includeTests, force, tighten bool
+	depth, min, top              int
+	share                        float64
 }
 
 // parseArgs accepts flags on either side of the positional argument. Go's flag
@@ -99,6 +117,10 @@ func parseArgs(args []string) (opts, error) {
 	fs.BoolVar(&o.includeTests, "include-tests", false, "follow test imports")
 	fs.BoolVar(&o.force, "force", false, "overwrite an existing baseline")
 	fs.BoolVar(&o.tighten, "tighten", false, "drop entries that no longer reproduce")
+	fs.IntVar(&o.depth, "depth", 2, "learn: directory depth defining a context")
+	fs.IntVar(&o.min, "min", 3, "learn: fewest declarations carrying a term")
+	fs.IntVar(&o.top, "top", 8, "learn: terms per context")
+	fs.Float64Var(&o.share, "share", 0.75, "learn: fraction of a term's uses in one context")
 
 	var positional []string
 	rest := args
@@ -122,29 +144,57 @@ func parseArgs(args []string) (opts, error) {
 	return o, nil
 }
 
-// load reads the declaration and builds the report.
-func load(o opts) (*arch.Decl, *arch.Graph, []arch.Violation, *model.Report, error) {
+// loaded is everything a run needs. Graph is nil when the declaration has no
+// forbid rules: an ownership-only declaration does not need a Go module.
+type loaded struct {
+	decl   *arch.Decl
+	graph  *arch.Graph
+	vs     []arch.Violation
+	drifts []arch.Drift
+	rep    *model.Report
+}
+
+func readDecl(o opts) (*arch.Decl, error) {
 	docPath := o.doc
 	if !filepath.IsAbs(docPath) {
 		docPath = filepath.Join(o.dir, o.doc)
 	}
 	raw, err := os.ReadFile(docPath)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("reading %s: %w\n\nWrite one first — see the preparation checklist in the README. "+
+		return nil, fmt.Errorf("reading %s: %w\n\nWrite one first — see the preparation checklist in the README. "+
 			"A tool that passes because there is nothing to check is worse than no tool", docPath, err)
 	}
 	d, err := arch.ParseDoc(string(raw))
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("%s: %w", o.doc, err)
+		return nil, fmt.Errorf("%s: %w", o.doc, err)
 	}
 	d.SHA = declSHA(o.dir, o.doc)
+	return d, nil
+}
 
-	g, err := arch.LoadGoGraph(o.dir, o.includeTests)
+// load reads the declaration and builds the report.
+func load(o opts) (loaded, error) {
+	d, err := readDecl(o)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return loaded{}, err
 	}
-	vs := arch.Check(d, g)
-	return d, g, vs, arch.Report(d, g, vs), nil
+	l := loaded{decl: d}
+	if len(d.Forbids) > 0 {
+		l.graph, err = arch.LoadGoGraph(o.dir, o.includeTests)
+		if err != nil {
+			return loaded{}, err
+		}
+		l.vs = arch.Check(d, l.graph)
+	}
+	if len(d.Owns) > 0 {
+		decls, err := arch.ScanDecls(o.dir, d, o.includeTests)
+		if err != nil {
+			return loaded{}, err
+		}
+		l.drifts = arch.CheckOwns(d, decls)
+	}
+	l.rep = arch.Report(d, l.graph, l.vs, l.drifts)
+	return l, nil
 }
 
 func run(args []string, gate bool) error {
@@ -152,10 +202,11 @@ func run(args []string, gate bool) error {
 	if err != nil {
 		return err
 	}
-	d, g, vs, rep, err := load(o)
+	l, err := load(o)
 	if err != nil {
 		return err
 	}
+	d, rep := l.decl, l.rep
 
 	if o.emit == "findings" {
 		enc := schema.NewEncoder(os.Stdout)
@@ -163,7 +214,7 @@ func run(args []string, gate bool) error {
 			f := rep.Findings[i]
 			if err := enc.Write(&schema.Finding{
 				Tool: "plumb", Rule: f.Rule, Severity: schema.SevError,
-				File: f.File, Message: f.Message, Suggest: f.Suggest,
+				File: f.File, Line: f.Line, Message: f.Message, Suggest: f.Suggest,
 				Symbol: d.SHA, Fingerprint: f.Fingerprint,
 			}); err != nil {
 				return err
@@ -172,12 +223,19 @@ func run(args []string, gate bool) error {
 		return enc.Flush()
 	}
 
-	for _, dead := range arch.DeadLayers(d, g) {
-		fmt.Fprintf(os.Stderr, "warning: layer %q matches no package — a rule guarding a directory that does not exist protects nobody\n", dead)
+	if l.graph != nil {
+		for _, dead := range arch.DeadLayers(d, l.graph) {
+			fmt.Fprintf(os.Stderr, "warning: layer %q matches no package — a rule guarding a directory that does not exist protects nobody\n", dead)
+		}
 	}
 
 	if !gate {
-		printViolations(vs, len(g.Edges), len(d.Forbids))
+		pkgs := 0
+		if l.graph != nil {
+			pkgs = len(l.graph.Edges)
+		}
+		printViolations(l.vs, pkgs, len(d.Forbids))
+		printDrift(l.drifts, len(d.Owns))
 		return nil
 	}
 
@@ -216,15 +274,68 @@ func printViolations(vs []arch.Violation, pkgs, rules int) {
 	}
 }
 
+func printDrift(ds []arch.Drift, owners int) {
+	if owners == 0 {
+		return
+	}
+	fmt.Printf("\n%d owning layers, %d responsibility drifts\n", owners, len(ds))
+	cur := ""
+	for _, d := range ds {
+		if k := d.Layer + " → " + d.Owner; k != cur {
+			cur = k
+			fmt.Printf("\n%s declares %s's vocabulary\n", d.Layer, d.Owner)
+		}
+		fmt.Printf("  %-32s [%s]  %s:%d\n", d.Name, d.Term, d.File, d.Line)
+	}
+}
+
+func cmdLearn(args []string) error {
+	o, err := parseArgs(args)
+	if err != nil {
+		return err
+	}
+	// The declaration is optional here: learn is how you get one.
+	d, err := readDecl(o)
+	if err != nil {
+		d = nil
+	}
+	lines, err := arch.Learn(o.dir, d, arch.LearnOptions{
+		Depth: o.depth, Min: o.min, Share: o.share, Top: o.top, IncludeTests: o.includeTests,
+	})
+	if err != nil {
+		return err
+	}
+	// The draft is a list of this codebase's own domain vocabulary, with usage
+	// counts. That is internal information by nature — more revealing than any
+	// finding, because it names the business concepts rather than a defect.
+	// Warned on stderr so it survives `plumb learn . > draft.txt`.
+	fmt.Fprint(os.Stderr, "note: this draft lists your internal domain vocabulary with counts.\n"+
+		"      Review it before pasting anywhere public.\n\n")
+	if d == nil {
+		fmt.Printf("# no %s — contexts are directories at depth %d; replace them with layer names\n", o.doc, o.depth)
+	}
+	fmt.Print(arch.FormatDraft(lines))
+	fmt.Print("\n# This is a draft, not a finding.\n" +
+		"#   1. Strike utility packages ENTIRELY — they own no vocabulary, only the\n" +
+		"#      generic words mechanism is written in. Marked above where detected.\n" +
+		"#   2. Strike generic verbs and adjectives: modify, applied, general, unknown,\n" +
+		"#      where, access, content. A term that could name anything names nothing,\n" +
+		"#      and owning one flags every use of it in the codebase.\n" +
+		"#   3. Keep five to ten terms per layer, paste the rest into the arch block,\n" +
+		"#      then `plumb scan` and read every finding.\n")
+	return nil
+}
+
 func cmdBaseline(args []string) error {
 	o, err := parseArgs(args)
 	if err != nil {
 		return err
 	}
-	_, _, _, rep, err := load(o)
+	l, err := load(o)
 	if err != nil {
 		return err
 	}
+	rep := l.rep
 	path := filepath.Join(o.dir, o.file)
 
 	if existing, err := baseline.Load(path); err == nil {
@@ -278,9 +389,10 @@ func cmdDiff(args []string) error {
 	}
 
 	c, detail := arch.Diff(oldD, newD)
-	fmt.Print(arch.FormatDiff(c, detail))
-	if c.NeedsReview() {
-		return fmt.Errorf("declaration weakened")
+	explained := arch.NewWhyEntries(out, string(cur))
+	fmt.Print(arch.FormatDiff(c, detail, explained))
+	if !arch.Accepted(c, explained) {
+		return fmt.Errorf("declaration weakened without a Why entry")
 	}
 	return nil
 }
