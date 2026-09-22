@@ -376,6 +376,32 @@ abandoned or relicensed.
 Scale: ~12,500 records across three repos is 3 MB. Five repos over five years
 with function-level detail lands in the low hundreds of MB.
 
+## How fast
+
+Measured on assay itself — 73 Go files, 18,600 lines, 20 packages — on a
+laptop (i9-13900H), best of three, wall clock:
+
+| | |
+|---|---|
+| `ratchet scan .` (findings + project metrics) | 40 ms |
+| `ratchet scan . --detail --emit measures` (1,383 function-level records) | 50 ms |
+| `ratchet check .` | 40 ms |
+| `ratchet history` | ~14 ms per commit, in parallel |
+| `strata append` / `query` / `stat` over that store | 30–40 ms each |
+| `lens top`, `docket plan` | 20–30 ms |
+| `plumb scan .` / `check .` (import graph, transitive) | 250–330 ms — almost all of it is `go list` |
+| `plumb learn` — ownership draft over a 150-file, 29,000-line Dart tree | 40 ms |
+| `judge cases .` | 30 ms |
+| `judge scan .`, 189 declarations, live through Claude Code | **156 s**, 24 batched calls |
+| `judge scan .` again, unchanged tree | 30 ms — every answer from the cache |
+
+Everything deterministic is bounded by reading the files once. The one slow
+tool is the judge, and it is slow because a model is thinking: roughly six
+seconds per batch of eight declarations, in three parallel calls. On a pull
+request with `--base` it judges only the declarations in changed files, which
+is usually a handful. On a whole repository, run it once, and the cache makes
+every rerun free until the code or the document changes.
+
 ## Install
 
 ```sh
