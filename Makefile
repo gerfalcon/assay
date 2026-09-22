@@ -1,5 +1,5 @@
 BIN  := bin
-CMDS := ratchet strata lens docket plumb
+CMDS := ratchet strata lens docket plumb judge
 
 .PHONY: all build test race cover check arch clean install
 

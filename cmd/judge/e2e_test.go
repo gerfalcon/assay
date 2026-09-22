@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/sherzing/assay/cmd/internal/cmdtest"
@@ -15,9 +16,11 @@ import (
 func TestScanEmitsVerifiedFindings(t *testing.T) {
 	bin := cmdtest.Build(t, "judge")
 	t.Setenv("OPENAI_API_KEY", "test-key")
-	calls := 0
+	// judge fans out to --jobs workers, so the handler is entered concurrently
+	// and a plain int counter races.
+	var calls atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		calls.Add(1)
 		var body struct {
 			Input []struct{ Content string } `json:"input"`
 		}
@@ -42,13 +45,13 @@ func TestScanEmitsVerifiedFindings(t *testing.T) {
 	if strings.Contains(r.Stdout, "AddLine") {
 		t.Error("a declaration that belongs must not become a finding")
 	}
-	if calls != 3 {
-		t.Errorf("expected one request per declaration, got %d", calls)
+	if calls.Load() != 3 {
+		t.Errorf("expected one request per declaration, got %d", calls.Load())
 	}
 	// Second run answers from the cache.
 	bin.Run(t, dir, args...).MustPass(t).MustSay(t, "3 from cache")
-	if calls != 3 {
-		t.Errorf("cache miss: %d calls", calls)
+	if calls.Load() != 3 {
+		t.Errorf("cache miss: %d calls", calls.Load())
 	}
 	bin.Run(t, dir, "scan", ".", "--provider", "codex", "--model", "m", "--base-url", srv.URL, "--layer", "rating").MustPass(t).MustSay(t, "1 judged")
 }
