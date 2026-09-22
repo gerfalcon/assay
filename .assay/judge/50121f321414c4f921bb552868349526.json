@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Validate carries no term owned by another layer and checks the verdict rules this package interprets.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Parse reads a quality comment into a verdict, and parse is unowned while comment belongs to verdicts.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

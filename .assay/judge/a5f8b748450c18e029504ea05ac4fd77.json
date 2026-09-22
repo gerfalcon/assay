@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"ParseDoc extracts the enforced arch block that the analysis layer checks, and 'parse' is not a term any other layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"The name carries `probe`, a term the analysis layer owns, so measuring candidates across a corpus is this layer's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

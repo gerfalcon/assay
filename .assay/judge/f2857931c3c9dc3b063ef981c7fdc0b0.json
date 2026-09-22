@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Turning judge results into findings is analysis producing findings, and `finding` is deliberately unowned while no other layer's term appears in the name.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

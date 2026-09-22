@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"ResolveOrg is built from `resolve` and `org`, both terms the verdicts layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

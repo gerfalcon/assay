@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Gemini is a provider client used by the judge to produce judgements, and its name carries no term owned by another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Precision is a term history owns, and the function computes per-rule precision from stored findings and verdicts, which is the store's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

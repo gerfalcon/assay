@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Close carries the term `close`, which the tickets layer itself owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

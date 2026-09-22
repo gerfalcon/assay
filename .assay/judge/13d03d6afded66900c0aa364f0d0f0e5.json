@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"DryRun carries no term owned by another layer and is the default no-op ticket provider, which is a ticketing concept.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

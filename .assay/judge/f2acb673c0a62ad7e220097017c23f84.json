@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Check evaluates forbid rules against the graph to produce violations, which is measurement, and its name carries no other layer's term.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

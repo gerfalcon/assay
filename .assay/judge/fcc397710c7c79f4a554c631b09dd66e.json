@@ -1,0 +1,1 @@
+{"belongs":false,"layer":"presenting","reason":"FormatDiff renders human-readable output text, which is presentation rather than a finding the analysis layer produces.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

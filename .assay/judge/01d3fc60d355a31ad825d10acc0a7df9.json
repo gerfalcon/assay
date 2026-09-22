@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Report is a shared data shape whose name carries no term owned by another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

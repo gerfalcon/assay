@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Verify checks answers against cases to produce findings, which is judging, and its name carries no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

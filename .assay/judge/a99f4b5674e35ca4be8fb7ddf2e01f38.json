@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Scope is not owned by any layer and is a wire-level record type in the published contract.","citation":"`pkg/schema` is the published contract."}

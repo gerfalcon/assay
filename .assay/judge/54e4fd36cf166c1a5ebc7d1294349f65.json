@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Decode is the JSONL decoder for the published record types, and `decoder` is vocabulary the schema layer itself owns.","citation":"It is the one package another organisation's tool might import, and a tool in another language must be able to reimplement it from the record types alone."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Parsing the arch block out of the document is reading the declaration that analysis enforces, and the name carries no foreign term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

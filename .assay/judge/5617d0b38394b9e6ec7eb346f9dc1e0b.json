@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"`rollup` is a term the history layer owns, so aggregating stored measures into periods is its own concept.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

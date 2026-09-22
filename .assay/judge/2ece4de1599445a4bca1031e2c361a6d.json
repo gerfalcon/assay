@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"'Why' and 'Entries' are owned by no other layer, and reading the ARCHITECTURE.md Why section is part of what plumb's arch analysis does.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

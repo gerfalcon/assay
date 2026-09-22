@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Asking the model is how the judge judges; the reference to `Schema` is a call, not a declared name, and calls are never checked.","citation":"Calls are never checked; that is what `forbid` is for."}

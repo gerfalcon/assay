@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Checking declared layers against the package graph uses only the terms 'layer' and 'graph', which analysis owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

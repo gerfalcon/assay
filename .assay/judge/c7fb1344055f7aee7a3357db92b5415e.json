@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Flush is a plain Encoder buffering method; the word 'append' appears only in a comment explaining a caller, not in the declaration's name, and names are what ownership checks.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Decode is the JSONL decoder, and decoder is a term the schema layer owns.","citation":"`pkg/schema` is the published contract."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Summarise computes the model-owned Summary from per-function metrics within one scan, and its name carries no term owned by history or any other layer.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

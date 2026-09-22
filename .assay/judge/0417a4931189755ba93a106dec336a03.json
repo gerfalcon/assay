@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Record is a union of the four wire record types the schema defines and its name carries no term owned by another layer.","citation":"The interface between tools is not a Go API. It is four record types, one JSON object per line, defined in `pkg/schema` and readable with `grep` and `jq` without any binary here."}

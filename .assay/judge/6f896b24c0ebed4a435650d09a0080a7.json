@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Kind is a term the schema layer owns and is part of the published record types.","citation":"`pkg/schema` is the published contract."}

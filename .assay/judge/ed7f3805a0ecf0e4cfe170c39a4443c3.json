@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Message builds the finding's text for a violation and its name carries none of the presenting terms (text, json, csv, render, format).","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

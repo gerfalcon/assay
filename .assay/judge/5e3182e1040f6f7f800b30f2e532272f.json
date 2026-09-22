@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Query is not a term owned by any layer, and a store query filter is the store's own concept.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

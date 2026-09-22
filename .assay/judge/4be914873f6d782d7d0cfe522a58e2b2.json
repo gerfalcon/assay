@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"'corpus' is a term the history layer itself owns, so the Corpus type is declared in its home layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

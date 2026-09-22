@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"A change classification for the arch declaration carries no term owned by another layer and is part of what plumb diff computes.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

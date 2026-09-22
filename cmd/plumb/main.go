@@ -314,7 +314,7 @@ func cmdLearn(args []string) error {
 	if d == nil {
 		fmt.Printf("# no %s — contexts are directories at depth %d; replace them with layer names\n", o.doc, o.depth)
 	}
-	fmt.Print(arch.FormatDraft(lines))
+	fmt.Print(formatDraft(lines))
 	fmt.Print("\n# This is a draft, not a finding.\n" +
 		"#   1. Strike utility packages ENTIRELY — they own no vocabulary, only the\n" +
 		"#      generic words mechanism is written in. Marked above where detected.\n" +
@@ -390,7 +390,7 @@ func cmdDiff(args []string) error {
 
 	c, detail := arch.Diff(oldD, newD)
 	explained := arch.NewWhyEntries(out, string(cur))
-	fmt.Print(arch.FormatDiff(c, detail, explained))
+	fmt.Print(formatDiff(c, detail, explained))
 	if !arch.Accepted(c, explained) {
 		return fmt.Errorf("declaration weakened without a Why entry")
 	}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Message fills the finding's message text, which is part of producing a finding, and the name itself carries no presenting term such as render.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

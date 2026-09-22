@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"System builds the judging prompt, an input to measurement, and its name carries no term owned elsewhere.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

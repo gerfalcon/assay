@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Dist is a term the model layer explicitly owns, so a distribution type is this layer's own vocabulary.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"RulePrecision carries `precision`, a term the history layer owns, and no other layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

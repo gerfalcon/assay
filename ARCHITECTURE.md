@@ -124,7 +124,7 @@ owns history     store rollup bucket append precision quarter corpus assessment
 owns gate        baseline tolerated tighten regressed cap
 owns tickets     plan cohort linear sync progress close
 owns import      import
-owns presenting  text json csv render
+owns presenting  text json csv render format
 ```
 
 ## Why

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"New constructs the judge's provider, part of how the judge judges, and its name carries no term owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

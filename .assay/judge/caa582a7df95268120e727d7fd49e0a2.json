@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Flush is a buffering method on the schema-owned Encoder and its name carries no term owned by another layer.","citation":"`pkg/schema` is the published contract."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"presenting","reason":"Findings renders findings to a writer, and `finding` is deliberately unowned, so the name carries no term another layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

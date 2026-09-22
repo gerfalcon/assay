@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"A proposed owns line is an analysis result and neither 'draft' nor 'line' is owned elsewhere.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Writing a ticket to a file is how the file provider creates tickets, and the name carries no other layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

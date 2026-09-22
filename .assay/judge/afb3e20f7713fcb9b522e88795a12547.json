@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Constructing the Linear provider uses the tickets layer's own `linear` vocabulary and nothing owned elsewhere.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

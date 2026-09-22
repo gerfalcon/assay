@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Match carries no foreign vocabulary and applies glob rules from the verdict config, which is this layer's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

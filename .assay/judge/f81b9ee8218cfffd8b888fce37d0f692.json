@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Ask sends the judge's prompt to the model and returns its answer, which is the judging step itself, and its name carries no term owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

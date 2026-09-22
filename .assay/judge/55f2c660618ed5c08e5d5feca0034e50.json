@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Validate checks the verdict config's own rules for well-formedness; the name is unowned and the concept is interpreting verdicts, which is this layer's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

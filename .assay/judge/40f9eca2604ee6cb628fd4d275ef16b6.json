@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Ask is the judge's measurement call; the json handling in its body is a call, not a name, and only names are checked for ownership.","citation":"Calls are never checked; that is what `forbid` is for."}

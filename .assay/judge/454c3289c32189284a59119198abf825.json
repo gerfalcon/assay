@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Report is not a term owned by any layer, and the shared finding model is where the scan's top-level record shape belongs.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

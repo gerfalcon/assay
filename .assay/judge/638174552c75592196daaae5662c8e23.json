@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Query is a store lookup type whose name carries no term owned by another layer; the Metric field is a field, not a declaration name.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

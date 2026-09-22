@@ -3,6 +3,7 @@ package arch
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -154,13 +155,19 @@ func TestLearnDraftsFromDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := FormatDraft(lines)
-	if !strings.Contains(out, "owns internal/cart") || !strings.Contains(out, " cart ") {
-		t.Errorf("draft missing cart:\n%s", out)
+	terms := map[string][]string{}
+	for _, l := range lines {
+		for _, tc := range l.Terms {
+			terms[l.Layer] = append(terms[l.Layer], tc.Term)
+		}
 	}
-	if !strings.Contains(out, "owns internal/rating") || !strings.Contains(out, "rating") {
-		t.Errorf("draft missing rating:\n%s", out)
+	if !slices.Contains(terms["internal/cart"], "cart") {
+		t.Errorf("draft missing cart: %v", terms)
 	}
+	if !slices.Contains(terms["internal/rating"], "rating") {
+		t.Errorf("draft missing rating: %v", terms)
+	}
+	out := strings.Join(terms["internal/cart"], " ") + strings.Join(terms["internal/rating"], " ")
 	// "line" appears once and "total"/"average" are single: below --min.
 	if strings.Contains(out, "average") {
 		t.Errorf("term below min leaked into draft:\n%s", out)
@@ -258,27 +265,6 @@ func TestUtilityPackagesAreMarkedNotAContext(t *testing.T) {
 		if NotAContext(layer) {
 			t.Errorf("NotAContext(%q) = true, want false — that is a real domain", layer)
 		}
-	}
-}
-
-// The draft must flag a utility layer inline, where the reader is deciding.
-func TestFormatDraftMarksUtilityLayers(t *testing.T) {
-	out := FormatDraft([]DraftLine{
-		{Layer: "pkg/utils", Decls: 39, Terms: []TermCount{{Term: "content", Count: 6}}},
-		{Layer: "internal/cart", Decls: 120, Terms: []TermCount{{Term: "cart", Count: 15}}},
-	})
-	if !strings.Contains(out, "utility, not a context") {
-		t.Errorf("pkg/utils not marked:\n%s", out)
-	}
-	// The marker must attach to the utility line only.
-	cartLine := ""
-	for _, l := range strings.Split(out, "\n") {
-		if strings.Contains(l, "internal/cart") {
-			cartLine = l
-		}
-	}
-	if strings.Contains(cartLine, "utility") {
-		t.Errorf("a real domain was marked as utility: %q", cartLine)
 	}
 }
 

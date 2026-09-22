@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Name identifies the judge backend, a plain accessor with no other layer's vocabulary in it.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

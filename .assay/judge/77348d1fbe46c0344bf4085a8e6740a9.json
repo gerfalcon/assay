@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Judgement is a term the schema layer itself owns, so it is exactly where the document says it belongs.","citation":"It is the one package another organisation's tool might import, and a tool in another language must be able to reimplement it from the record types alone."}

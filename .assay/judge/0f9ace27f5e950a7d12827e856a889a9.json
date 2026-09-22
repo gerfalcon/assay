@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Creating a ticket record is the ticketing layer's job and the name carries no term another layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

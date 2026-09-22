@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Config carries no term owned by another layer and holds the org and verdict rules that the verdicts layer interprets.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

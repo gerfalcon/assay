@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"gate","reason":"Result carries the gate's own outcome (new, fixed, existing, cap breaches) and its only foreign-sounding field, CapBreak, uses the gate-owned term cap.","citation":"`.ratchet-baseline.json` and `.plumb-baseline.json` record what a repository has agreed to tolerate; they are committed, and the gate fails only on what is new."}

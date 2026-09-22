@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Classifying whether a path segment is a utility rather than a context is part of the ownership analysis and carries no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Forbid is the dependency rule the arch analysis checks for violations, and 'forbid' is owned by no other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Scan is the analysis layer's own vocabulary and produces a findings report, which is exactly what analysis is for.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

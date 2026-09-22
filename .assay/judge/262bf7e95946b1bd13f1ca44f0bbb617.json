@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Close is a term tickets owns; the glob call and comment parameter inside the body are calls, not declarations, and are not checked.","citation":"Calls are never checked; that is what `forbid` is for."}

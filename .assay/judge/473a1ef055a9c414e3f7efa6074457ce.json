@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Summarise carries model's own `summary` vocabulary and fills the model's Summary type; its name carries no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

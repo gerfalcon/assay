@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Provider abstracts the model that judges a case and carries no term owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

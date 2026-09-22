@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"ClaudeCode is a judge backend configuration type inside internal/judge and its name carries no term another layer owns.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

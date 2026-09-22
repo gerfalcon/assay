@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"'Term' and 'Count' are not vocabulary owned by another layer, so this analysis-side tally is in place.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

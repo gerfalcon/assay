@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"A provider's name accessor carries no term owned by another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Ask invokes the judge backend to obtain a judgement, which is the judging work this layer does, and its name carries no other layer's term.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

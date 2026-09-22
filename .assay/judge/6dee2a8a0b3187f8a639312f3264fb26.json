@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Run performs the judging itself and its name carries no vocabulary owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

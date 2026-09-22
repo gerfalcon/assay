@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"NewEncoder constructs the schema-owned Encoder and carries no other layer's vocabulary.","citation":"`pkg/schema` is the published contract."}

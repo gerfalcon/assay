@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Constructing the model provider the judge uses is part of judging, and the name `New` carries no other layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

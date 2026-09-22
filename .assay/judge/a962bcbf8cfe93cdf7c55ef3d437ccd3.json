@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"`org` is a term the verdicts layer owns, so deriving an organisation from an email is its own concept.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

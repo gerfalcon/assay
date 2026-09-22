@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Closing a Linear issue carries only the tickets layer's own terms (close, linear) and is the tracker's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

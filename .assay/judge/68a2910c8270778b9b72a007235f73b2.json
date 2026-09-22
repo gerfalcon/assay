@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Encoder is a term the schema layer owns outright.","citation":"`pkg/schema` is the published contract."}

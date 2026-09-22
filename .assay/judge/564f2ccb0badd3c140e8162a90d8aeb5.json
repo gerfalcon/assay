@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Learning owns lines from scanned declarations is measurement over code, which is this layer's job.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

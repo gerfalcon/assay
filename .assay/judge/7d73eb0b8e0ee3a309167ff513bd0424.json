@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Provider carries no term owned by another layer and abstracting the external tracker that tickets are created in and closed against is ticketing work.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

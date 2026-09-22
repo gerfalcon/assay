@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Building findings from violations and drifts is analysis producing findings, and 'report' is not a term owned by any other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

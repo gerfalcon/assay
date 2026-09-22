@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Declaration is the raw input the arch checker measures and its name carries no term owned elsewhere.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"The name `Result` carries no term owned by another layer, and the `Verdict` field is only a field, not a declared name, and `verdict` is deliberately unowned anyway.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"An LLM provider client is part of how the judge measures and judges, and the name OpenAI carries no term owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Record is the decoded sum of the four wire record types and carries no term owned by another layer.","citation":"`pkg/schema` is the published contract."}

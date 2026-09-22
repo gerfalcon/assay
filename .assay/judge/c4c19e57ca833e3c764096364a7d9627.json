@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Rule is a config-sourced verdict pattern and rule is not a term any layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

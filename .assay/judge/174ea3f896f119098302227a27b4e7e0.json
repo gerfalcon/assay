@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Kind is a record-type enumeration for the wire format and `kind` is a term the schema layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Create is the ticket-creation method of the dry-run provider; its name carries no presenting term even though it writes to a writer, and the rule is about names, not calls.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

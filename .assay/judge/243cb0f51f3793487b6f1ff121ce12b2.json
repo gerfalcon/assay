@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Precision is a Store method aggregating evidence per rule, and both `store` and `precision` are owned by history.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

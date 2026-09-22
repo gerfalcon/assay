@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"OpenAI carries no term owned by another layer; it is a provider type inside the judge package.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

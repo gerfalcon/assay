@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"ModelFindings turns judge results into findings, which is exactly what analysis is meant to produce, and 'finding' is deliberately unowned.","citation":"# Analysis produces findings and nothing else."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Plan is a term the tickets layer explicitly owns and the type describes what docket would create.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

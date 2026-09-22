@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Measure is one of the four wire record types and the document deliberately leaves the term measure unowned so schema may declare it.","citation":"`pkg/schema` is the published contract."}

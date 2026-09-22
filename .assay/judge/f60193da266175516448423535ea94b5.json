@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Options configures a scan and its name carries no term owned by another layer; holding a verdict.Config field is a dependency question, not a vocabulary one.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

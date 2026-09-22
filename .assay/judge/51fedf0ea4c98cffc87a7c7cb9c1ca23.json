@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Assessment and Corpus are both terms the history layer owns, so an Assessment type in internal/evidence is exactly this layer's vocabulary.","citation":"owns history     store rollup bucket append precision quarter corpus assessment"}

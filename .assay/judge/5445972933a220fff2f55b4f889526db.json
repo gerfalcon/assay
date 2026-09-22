@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Parsing a `quality:` comment into a verdict carries no other layer's term, and `comment` is verdicts' own vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

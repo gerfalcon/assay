@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Fingerprint identifies a violation as part of the finding it produces and its name carries no owned term of another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

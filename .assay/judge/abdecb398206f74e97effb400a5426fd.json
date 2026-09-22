@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Build turns stored precision rows into records and carries no other layer's vocabulary; precision and quarter are history's own terms.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

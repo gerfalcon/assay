@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Decl holds the parsed layer, forbid and owns declarations that the arch checker measures against, and its name carries no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

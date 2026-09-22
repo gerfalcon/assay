@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Ask sends a judging prompt and returns a raw answer, which is the judging work analysis owns, and no other layer's term appears in the name.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

@@ -1,0 +1,1 @@
+{"belongs":false,"layer":"presenting","reason":"Formatting draft lines into human-readable text output is rendering, which is the presenting layer's concept rather than measurement.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

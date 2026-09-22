@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"FuncMetrics carries 'metric', 'cyclomatic', 'cognitive' and 'nesting', all of which the model layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

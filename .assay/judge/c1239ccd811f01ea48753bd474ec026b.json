@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"gate","reason":"Baseline is the gate's own owned term, recording what the repository tolerates.","citation":"`.ratchet-baseline.json` and `.plumb-baseline.json` record what a repository has agreed to tolerate; they are committed, and the gate fails only on what is new."}

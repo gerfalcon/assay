@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"LoadDir reads evidence records from disk, which is storage work with a name carrying no term owned by another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

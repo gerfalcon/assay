@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"A forbid rule is part of the architecture declaration that analysis checks, and 'forbid' is owned by no other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

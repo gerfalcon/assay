@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"'Learn' and 'Options' are not terms owned by any other layer, and drafting ownership from declarations is measurement work in the analysis layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

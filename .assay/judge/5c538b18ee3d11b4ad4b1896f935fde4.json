@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"gate","reason":"Regressed is a term the gate layer explicitly owns and it decides whether the gate fails the build.","citation":"`.ratchet-baseline.json` and `.plumb-baseline.json` record what a repository has agreed to tolerate; they are committed, and the gate fails only on what is new."}

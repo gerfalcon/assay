@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Ask carries no term owned by another layer; querying a model to judge is part of how the judge package produces findings.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

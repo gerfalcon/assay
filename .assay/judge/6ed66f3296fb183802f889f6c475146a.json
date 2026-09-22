@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Parsing layer, forbid and owns statements is the declaration analysis checks against, and 'parse' is owned by no other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

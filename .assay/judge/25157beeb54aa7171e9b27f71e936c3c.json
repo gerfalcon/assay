@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Match applies glob-based verdict rules to a finding, which is the verdicts layer's own job and its name carries no term another layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

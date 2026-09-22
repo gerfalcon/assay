@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Sync carries the term `sync`, which the tickets layer itself owns, so reconciling tickets against current findings is this layer's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Encoder is a term the schema layer explicitly owns, and a JSONL record encoder is the wire-format contract this layer exists to define.","citation":"`pkg/schema` is the published contract."}

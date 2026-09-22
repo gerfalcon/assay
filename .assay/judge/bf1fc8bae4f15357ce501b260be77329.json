@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"gate","reason":"Check compares a scan against the baseline's tolerated set and caps, which is the gate's job, and its name carries no other layer's term.","citation":"`.ratchet-baseline.json` and `.plumb-baseline.json` record what a repository has agreed to tolerate; they are committed, and the gate fails only on what is new."}

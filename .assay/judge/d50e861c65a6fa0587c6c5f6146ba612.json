@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"FromComments indexes comment-sourced verdicts, and comment is a term the verdicts layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

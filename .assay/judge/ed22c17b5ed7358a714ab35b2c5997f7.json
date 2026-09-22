@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Write stamps Version and Kind onto the four record types, which is the schema layer's own vocabulary (kind, encoder) and not any other layer's.","citation":"`pkg/schema` is the published contract."}

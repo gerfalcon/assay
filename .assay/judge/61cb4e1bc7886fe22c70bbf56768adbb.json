@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"The name carries 'stem', which is a term the analysis layer itself owns, so it is squarely in place.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Provider is the model abstraction that judging measures with and carries no term owned by another layer.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

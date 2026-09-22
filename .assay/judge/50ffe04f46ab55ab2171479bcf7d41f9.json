@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Bucket is a rollup-period aggregate, and bucket is a term the history layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

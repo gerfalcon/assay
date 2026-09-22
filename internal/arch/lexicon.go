@@ -498,35 +498,6 @@ func Learn(root string, d *Decl, o LearnOptions) ([]DraftLine, error) {
 	return out, nil
 }
 
-// FormatDraft renders the draft as a block a person pastes into the arch block
-// and then edits. The counts are comments: they are the evidence for each
-// term, and the reader's job is to strike the ones that are homonyms or noise.
-func FormatDraft(lines []DraftLine) string {
-	var b strings.Builder
-	width := 0
-	for _, l := range lines {
-		if len(l.Layer) > width {
-			width = len(l.Layer)
-		}
-	}
-	for _, l := range lines {
-		var ts, ev []string
-		for _, t := range l.Terms {
-			ts = append(ts, t.Term)
-			ev = append(ev, fmt.Sprintf("%s:%d", t.Term, t.Count))
-		}
-		mark := ""
-		if NotAContext(l.Layer) {
-			mark = "   # ↑ utility, not a context — strike this whole line"
-		}
-		fmt.Fprintf(&b, "owns %-*s %s   # %d decls; %s\n", width, l.Layer, strings.Join(ts, " "), l.Decls, strings.Join(ev, " "))
-		if mark != "" {
-			fmt.Fprintf(&b, "%s\n", mark)
-		}
-	}
-	return b.String()
-}
-
 // utilityNames are the last path segments of packages that hold mechanism
 // rather than domain.
 var utilityNames = map[string]bool{

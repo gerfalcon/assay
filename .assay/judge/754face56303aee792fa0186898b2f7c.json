@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Thresholds for classifying probe rates are measurement parameters and carry no term owned by another layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

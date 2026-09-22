@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"BatchSize is a judge backend accessor whose name carries no term another layer owns.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

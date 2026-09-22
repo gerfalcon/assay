@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"The name carries `candidate`, a term the analysis layer itself owns, so this is analysis vocabulary in the analysis layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"RulePrecision is the per-rule aggregate of stored evidence and `precision` is a term history owns, so the name carries no other layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

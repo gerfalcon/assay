@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Drift is a finding type and drift is a term the analysis layer explicitly owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

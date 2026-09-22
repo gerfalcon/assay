@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"A provider name accessor carries no other layer's vocabulary and is ordinary ticket-provider plumbing.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

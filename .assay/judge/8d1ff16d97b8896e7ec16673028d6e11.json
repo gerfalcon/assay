@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"ResolveOrg uses only resolve and org, both of which the verdicts layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

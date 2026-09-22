@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"The name `DraftRule` carries none of the presenting terms (text, json, csv, render) or any other layer's term, so the document gives no ground to call it drift.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

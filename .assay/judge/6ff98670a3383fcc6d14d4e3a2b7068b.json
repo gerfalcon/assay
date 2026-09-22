@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"`close` is owned by tickets, and its call to filepath.Glob is a call rather than a declaration carrying the verdicts term.","citation":"Calls are never checked; that is what `forbid` is for."}

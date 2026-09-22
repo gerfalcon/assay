@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"A file-backed ticket provider is a ticketing concept and its name carries no other layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

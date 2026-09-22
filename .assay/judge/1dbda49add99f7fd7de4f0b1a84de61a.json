@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"`linear` is a term the tickets layer owns, so the Linear tracker provider is its own concept.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

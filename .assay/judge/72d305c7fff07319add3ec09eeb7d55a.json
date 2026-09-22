@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Finding is one of the four wire record types the schema is defined to hold, and `finding` is deliberately left unowned.","citation":"The interface between tools is not a Go API. It is four record types, one JSON object per line, defined in `pkg/schema` and readable with `grep` and `jq` without any binary here."}

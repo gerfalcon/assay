@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Dropped records a rejected answer during judging, and 'answer' is analysis vocabulary while the name carries no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

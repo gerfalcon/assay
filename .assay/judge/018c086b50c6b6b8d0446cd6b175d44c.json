@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"The name `Fingerprint` carries no term owned by another layer, and identifying a finding across edits is part of the shared finding model.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

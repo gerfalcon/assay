@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Rule is a pattern-matched verdict entry from project config; `rule` is owned by no layer and the name carries no other layer's term, so it belongs where verdicts are interpreted.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Suggest is part of the finding a drift check produces and carries no other layer's vocabulary.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

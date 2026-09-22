@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"System builds the judge prompt prefix, which is part of judging, and its name carries no other layer's term.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

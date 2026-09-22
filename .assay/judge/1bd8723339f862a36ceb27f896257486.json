@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"DeadLayers checks declared layers against the package graph, and 'layer' and 'graph' are vocabulary analysis owns.","citation":"owns analysis    scan smell probe layer graph violation drift excerpt answer stem candidate"}

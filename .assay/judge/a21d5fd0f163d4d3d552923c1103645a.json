@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Result is a measured candidate across the corpus, a finding produced by analysis, and its name carries no term owned by another layer.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

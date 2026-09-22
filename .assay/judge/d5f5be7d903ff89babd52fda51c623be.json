@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"NewDist constructs the model's own Dist type and carries only the `dist` term that model owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

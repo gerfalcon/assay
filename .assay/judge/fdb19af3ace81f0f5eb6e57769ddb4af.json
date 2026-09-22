@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Finding is a judged drift produced by the analysis layer, and the term finding is deliberately left unowned so no layer can claim it against another.","citation":"Owning any of these would make the rule cry wolf on the first scan, which is the fastest way to get it switched off."}

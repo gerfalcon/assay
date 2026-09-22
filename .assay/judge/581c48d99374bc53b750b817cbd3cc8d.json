@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"BuildPlan carries the owned term 'plan' and builds ticket cohorts from findings, verdicts and existing tickets, which is the tickets layer's job.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

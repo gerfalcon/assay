@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Checking ownership and producing Drift records is architectural analysis, and 'drift' is a term this layer owns.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"BuildPlan carries the term plan, which the tickets layer owns, and building a plan of ticket cohorts from findings is ticketing work.","citation":"owns tickets     plan cohort linear sync progress close"}

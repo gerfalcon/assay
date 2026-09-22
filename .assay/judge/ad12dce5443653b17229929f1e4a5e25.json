@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Violation is a finding produced by architecture checking, and 'violation' is a term analysis owns.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

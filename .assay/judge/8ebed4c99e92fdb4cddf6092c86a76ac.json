@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"import","reason":"ImportFile is a file-opening wrapper over Import and carries only the import layer's own term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

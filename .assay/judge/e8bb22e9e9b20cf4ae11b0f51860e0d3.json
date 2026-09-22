@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Assess produces an Assessment over a Corpus using precision, all of which are terms the history layer itself owns, so nothing here carries another layer's vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"Aggregate merges evidence records into a per-rule Corpus and recomputes precision, both of which are history-owned concepts, and its name carries no other layer's term.","citation":"owns history     store rollup bucket append precision quarter corpus assessment"}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Options for learning ownership vocabulary carry no term owned by another layer and belong with the arch analysis.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

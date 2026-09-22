@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Line produces a single JSONL record line via the schema Encoder, which is the wire format the schema defines, and 'line' is owned by no other layer.","citation":"`pkg/schema` is the published contract."}

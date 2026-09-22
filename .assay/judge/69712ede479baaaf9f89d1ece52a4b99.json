@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Scope is a plain string type in the published record format and `scope` is owned by no other layer, so there is no vocabulary drift.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Key is a stable identity helper on the model's own FuncMetrics type and carries no term owned by another layer.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

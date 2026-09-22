@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"AskBatch drives the external judge process and parses its answers, which is judging, and its name carries no term another layer owns.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

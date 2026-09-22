@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Message is the finding's own description and its name carries none of presenting's terms (text, json, csv, render).","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

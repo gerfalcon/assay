@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"A String method on an analysis type carries none of the terms owned by presenting or any other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

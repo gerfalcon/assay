@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Dist is a distribution type and `dist` is a term the model layer owns, so nothing is out of place.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

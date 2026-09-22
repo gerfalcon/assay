@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Request assembles the prompt for one judged case; although its comment says 'renders', the declaration's name carries no term owned by presenting or any other layer.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

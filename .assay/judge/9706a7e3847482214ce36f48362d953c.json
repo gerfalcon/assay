@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"A provider configuration for the judge carries no term owned by another layer and serves judging, which is analysis's job.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

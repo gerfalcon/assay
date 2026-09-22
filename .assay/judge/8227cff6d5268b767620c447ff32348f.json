@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Latest carries no term owned by another layer and resolving the ticket log to current state per ticket is the ticket package's own concern.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

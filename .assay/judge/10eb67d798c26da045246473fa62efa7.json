@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"A provider name accessor on the Linear tracker adapter carries only the tickets vocabulary (linear) and no other layer's term.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

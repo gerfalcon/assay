@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Summary is a model-owned term and the type aggregates model-owned metrics; finding is deliberately unowned.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

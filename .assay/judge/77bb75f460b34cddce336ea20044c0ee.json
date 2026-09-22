@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"history","reason":"'Build' is not an owned term and it turns store precision rows into evidence records, which is history's own vocabulary.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

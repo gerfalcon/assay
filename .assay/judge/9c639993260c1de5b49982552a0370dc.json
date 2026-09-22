@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"verdicts","reason":"Config holds the org and the verdict rules for a repo; `org` is owned by verdicts and `config` is unowned, so no foreign vocabulary is present.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"LoadConfig reads the scan's project-level configuration and its name carries no owned term; `verdict` is deliberately unowned so reading verdict config is not drift.","citation":"Owning any of these would make the rule cry wolf on the first scan, which is the fastest way to get it switched off."}

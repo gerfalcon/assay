@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Drift is a term the analysis layer explicitly owns, so the finding type is declared where the document says it should be.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

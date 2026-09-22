@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"gate","reason":"Check compares a report against the tolerated set and the caps, which is the gate's own vocabulary, and the name 'Check' carries no term owned by another layer.","citation":"A type or function whose name carries another layer's vocabulary is responsibility drift, wherever its imports point."}

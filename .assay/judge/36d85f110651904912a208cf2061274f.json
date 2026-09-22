@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"LoadGoGraph builds the import graph, and graph is a term the analysis layer owns.","citation":"owns analysis    scan smell probe layer graph violation drift excerpt answer stem candidate"}

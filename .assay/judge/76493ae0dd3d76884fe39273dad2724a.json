@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"DraftRule's name carries no term owned by another layer, and drafting a rule from probe results is part of the learn package's job of producing candidates.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

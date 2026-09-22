@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Fingerprint identifies a finding stably and its name carries no term owned by another layer, so it belongs with the shared finding model.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

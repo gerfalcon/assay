@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"schema","reason":"Finding is one of the four wire record types the schema exists to define, and the document deliberately leaves the term finding unowned so schema may declare it.","citation":"`pkg/schema` is the published contract."}

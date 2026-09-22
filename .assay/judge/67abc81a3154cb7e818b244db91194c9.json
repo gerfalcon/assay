@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"model","reason":"Summary carries the `summary` term, which model owns, and is the shared roll-up shape of the finding model.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}

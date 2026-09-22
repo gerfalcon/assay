@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"tickets","reason":"Sync carries the term sync, which the tickets layer owns, and recomputing ticket progress against a fresh scan is ticketing work.","citation":"owns tickets     plan cohort linear sync progress close"}

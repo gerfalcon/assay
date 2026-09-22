@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"Probe scans repositories against candidates to measure rates, and 'probe' is a term the analysis layer owns.","citation":"`internal/analyze`, `internal/arch`, `internal/learn` and `internal/judge` measure and judge; they produce findings and nothing else."}

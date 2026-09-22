@@ -1,0 +1,1 @@
+{"belongs":true,"layer":"analysis","reason":"'New', 'Why' and 'Entries' carry no other layer's vocabulary, so diffing dated Why entries for plumb diff belongs with the arch analysis.","citation":"A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`."}
