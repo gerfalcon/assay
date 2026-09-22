@@ -410,12 +410,23 @@ go install github.com/sherzing/assay/cmd/strata@latest
 go install github.com/sherzing/assay/cmd/lens@latest
 go install github.com/sherzing/assay/cmd/docket@latest
 go install github.com/sherzing/assay/cmd/plumb@latest
+go install github.com/sherzing/assay/cmd/judge@latest
 ```
 
-Single Go module, one binary per `cmd/` — install only what you want. No
-external dependencies: everything outside the standard library is in this
-repository. The shared packages are an implementation convenience; the interop
-contract is the JSONL.
+Single Go module, one binary per `cmd/` — install only what you want.
+
+**Five of the six link nothing outside the standard library.** `ratchet`,
+`strata`, `lens`, `docket` and `plumb` have no third-party code in them at all,
+which is the property that matters for a tool you are asked to run in CI
+against your own source.
+
+`judge` is the exception: it uses the Anthropic Go SDK to call a model, which
+brings in eleven transitive modules (see [NOTICE](NOTICE)). It is also the only
+tool that talks to anything outside your machine, so the dependency and the
+network call arrive together rather than by surprise. Nothing is vendored.
+
+The shared packages are an implementation convenience; the interop contract is
+the JSONL.
 
 Building locally instead:
 

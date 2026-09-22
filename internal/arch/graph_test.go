@@ -1,6 +1,7 @@
 package arch
 
 import (
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -38,5 +39,34 @@ func TestMainModuleIsNotInferredFromTheFirstDependency(t *testing.T) {
 	d := mustParse(t, "layer domain internal/domain\nlayer infra internal/impl\nforbid domain -> infra\n")
 	if vs := Check(d, g); len(vs) != 1 {
 		t.Errorf("got %d violations, want 1 — the graph is present but the check found nothing", len(vs))
+	}
+}
+
+// The five analysis tools must stay free of third-party code. That property is
+// why a team will run them in CI against their own source, and it is quietly
+// lost the first time a convenience library gets imported into a shared
+// package. judge is deliberately exempt: it calls a model, so it carries the
+// SDK and the network call together.
+//
+// NOTICE and the README both state this; this test is what keeps them true.
+func TestAnalysisToolsHaveNoThirdPartyCode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("shells out to go list")
+	}
+	for _, cmd := range []string{"ratchet", "strata", "lens", "docket", "plumb"} {
+		out, err := exec.Command("go", "list", "-deps", "../../cmd/"+cmd).Output()
+		if err != nil {
+			t.Fatalf("go list %s: %v", cmd, err)
+		}
+		for _, pkg := range strings.Fields(string(out)) {
+			root, _, _ := strings.Cut(pkg, "/")
+			if !strings.Contains(root, ".") {
+				continue // stdlib
+			}
+			if strings.HasPrefix(pkg, "github.com/sherzing/assay") {
+				continue
+			}
+			t.Errorf("%s links third-party package %q — NOTICE and the README say it does not", cmd, pkg)
+		}
 	}
 }
