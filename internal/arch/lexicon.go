@@ -157,6 +157,17 @@ func belowSurface(ext string, src []byte, off int) bool {
 
 var testFileRe = regexp.MustCompile(`(_test\.go|Tests?\.cs|_test\.dart|\.(test|spec)\.tsx?|Test\.(java|kt)|^test_.*\.py)$`)
 
+// generatedFileRe matches files a tool wrote. Their names are chosen by a
+// generator from a schema, so they carry whatever vocabulary the upstream
+// contract uses and nobody can move or rename a declaration in them — every
+// finding there is unactionable by construction.
+//
+// This is not a marginal filter. On one service 10 of 17 drifts came from
+// `*_gen.go` analytics events, and a Flutter monorepo carries 310 `.g.dart`
+// and `.freezed.dart` files. `generated` was already skipped as a DIRECTORY,
+// which misses every convention that marks generated code by FILENAME instead.
+var generatedFileRe = regexp.MustCompile(`(_gen\.go|\.pb\.go|\.pb\.gw\.go|_generated\.go|\.g\.dart|\.freezed\.dart|\.gr\.dart|\.mocks\.dart|\.designer\.cs|\.generated\.cs|_pb2\.py|\.g\.ts)$`)
+
 // skipDirs are never source of record for any layer.
 var skipDirs = map[string]bool{
 	".git": true, "vendor": true, "node_modules": true, "bin": true, "obj": true,
@@ -189,6 +200,9 @@ func scanDecls(root string, layerOf func(relDir string) (string, bool), includeT
 			return nil
 		}
 		if !includeTests && testFileRe.MatchString(e.Name()) {
+			return nil
+		}
+		if generatedFileRe.MatchString(e.Name()) {
 			return nil
 		}
 		rel, err := filepath.Rel(root, p)
@@ -502,24 +516,39 @@ func Learn(root string, d *Decl, o LearnOptions) ([]DraftLine, error) {
 // rather than domain.
 var utilityNames = map[string]bool{
 	"utils": true, "util": true, "helpers": true, "helper": true, "common": true,
-	"shared": true, "lib": true, "internal": true, "core": true, "base": true,
-	"misc": true, "tools": true, "client": true, "clients": true, "pkg": true,
-	"web_utils": true, "webutils": true, "infra": true, "infrastructure": true,
+	"shared": true, "lib": true, "libs": true, "misc": true, "tools": true,
+	"scripts": true, "base": true,
+	// compound forms, since the check splits on "/" and not on "_"
+	"web_utils": true, "webutils": true, "test_utils": true, "testutils": true,
 }
 
-// NotAContext reports whether a drafted layer is a utility package rather than
-// a domain context.
+// NotAContext reports whether a drafted layer looks like a utility package
+// rather than a domain context.
 //
 // A utility package has no vocabulary of its own — it has the generic words
-// that mechanism is written in. Letting one own `content format` would flag
-// every ContentType in the codebase, so the fix is to strike the LINE, not to
-// prune its terms, and the draft should say so. Depth-based context discovery
-// nominates these freely: a real run drafted utils, client and web_utils
-// alongside genuine domains.
+// mechanism is written in. Letting one own `content format` would flag every
+// ContentType in the codebase, so the fix is to strike the LINE, not to prune
+// its terms.
+//
+// Every path segment is checked, not just the last: depth-based discovery
+// produced `tools/playground` and `tools/ci_detect`, where only the first
+// segment says "not a domain".
+//
+// DELIBERATELY EXCLUDES `core`, `infrastructure`, `infra` and `client`. Those
+// are real layer names in clean and hexagonal architectures — a C# service
+// here has a genuine `src/Infrastructure` layer owning `polly` and `circuit`,
+// and telling the reader to strike it would be wrong. The list keeps only
+// names that are junk drawers wherever they appear. `internal` came out for
+// the same reason once every segment was checked: it is Go's standard
+// directory for non-exported packages, so every `internal/billing` in every
+// Go service would have been marked. And because judging this
+// correctly needs context the tool does not have, the marker now asks the
+// reader to check rather than telling them to delete.
 func NotAContext(layer string) bool {
-	seg := layer
-	if i := strings.LastIndexByte(seg, '/'); i >= 0 {
-		seg = seg[i+1:]
+	for _, seg := range strings.Split(layer, "/") {
+		if utilityNames[strings.ToLower(seg)] {
+			return true
+		}
 	}
-	return utilityNames[strings.ToLower(seg)]
+	return false
 }

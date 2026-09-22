@@ -305,6 +305,59 @@ a loosening that `plumb diff` sends to a second reviewer. Adopt it the same way
 as layering: draft, edit, `plumb baseline`, and the ratchet blocks new drift
 from then on.
 
+#### Choosing what to own
+
+Measured against six real codebases in three languages, almost all the noise
+came from four causes. All four are avoidable, and none of them is obvious.
+
+**Owning a term and being checked are the SAME SWITCH.** A layer is checked for
+drift if and only if it has an `owns` line. There is no way to say "impl owns
+`outbox`, but do not scrutinise impl". That coupling produces the single
+biggest false-positive class:
+
+> A persistence layer for memberships necessarily declares `MembershipRepo`.
+> An adapter for vouchers necessarily declares `ApplyVoucher`. A mapper for
+> eligibility necessarily declares `EligibilityMapper`. That is correct
+> hexagonal architecture, not drift.
+
+On one service, giving the infrastructure layer an `owns` line produced **39
+findings of which 38 were this class**. On another, 21 of 21.
+
+**So own the terms whose misplacement you want to CATCH, not the terms that
+describe the layer.** Narrowing one declaration from `owns domain membership
+benefit entitlement` to `owns domain entitlement` — a word the infrastructure
+layer never says — took it from 39 findings to 1, and the 1 was real.
+
+This is the opposite of what `plumb learn` drafts, because learn ranks by
+frequency and the most frequent terms are exactly the ones adapters also use.
+Treat the draft as a list of candidates to narrow, not to accept.
+
+**Give adapters, mappers and repositories no `owns` line at all.** They are
+consumers. Reserve ownership for the layers that are supposed to be PURE — the
+ones where a foreign concept appearing is genuinely news.
+
+**Match `--depth` to how the repository is laid out.** The default of 2 finds
+contexts in a service and useless ones in a monorepo: on a Flutter repo it
+nominated `packages/features` as a single context holding 18,606 declarations,
+while `--depth 3` gave `qcommerce`, `subscription` and `dine_out` with real
+vocabulary. Run `learn` at two depths and keep the one whose layer names you
+recognise.
+
+**Generated files are excluded automatically** — `*_gen.go`, `*.pb.go`,
+`*.g.dart`, `*.freezed.dart`, `*.designer.cs` and friends. Their names come from
+a schema rather than from anyone's intent, and no finding in them is actionable
+because nobody can move the declaration. This is not marginal: on one service
+10 of 17 findings came from generated analytics events, and a Flutter monorepo
+carries 310 such files.
+
+#### What it costs to read
+
+Expect to reject most of the first run and keep the declaration that survives.
+The terms that produce false positives are recognisable: generic verbs
+(`modify`, `apply`, `enrich`, `handle`), words a homonym makes ambiguous across
+domains, and anything an adapter would naturally say. The terms that produce
+real findings are the ones only one part of the system has any business using.
+
 
 ### Judgement: does it make sense here
 
