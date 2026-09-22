@@ -66,7 +66,9 @@ is an error rather than a no-op, so a typo cannot silently drop a rule.
 Both rules are checked against the code by `plumb`, tolerated by
 `.plumb-baseline.json`, and classified on change by `plumb diff`: adding a
 rule or a term is a tightening and is free; removing one is a loosening and
-needs a second reviewer and an entry under Why.
+needs a second reviewer and an entry under Why. The entry is what `plumb diff`
+checks: a paragraph under `## Why` starting with a bold date, `**2026-01-31.**`,
+that the previous version did not have. The reviewer is the pull request review.
 
 <!-- The block below is ENFORCED by `make arch`. It is not decoration.
      Editing it is an architectural change: `plumb diff` classifies it, and a

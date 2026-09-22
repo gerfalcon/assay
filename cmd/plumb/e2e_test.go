@@ -278,6 +278,16 @@ func TestDiffClassifiesTighteningAndLoosening(t *testing.T) {
 
 	put("layer domain internal/domain\nlayer infra internal/impl internal/helper\nforbid infra -> domain\n")
 	bin.Run(t, dir, "diff", ".", "--base", "baseref").MustFail(t).MustSay(t, "second reviewer")
+
+	// The same loosening, explained: a new dated entry under Why is what the
+	// gate asks for, and the review itself is the second reviewer.
+	explained := decl("layer domain internal/domain\nlayer infra internal/impl internal/helper\nforbid infra -> domain\n") +
+		"\n**2026-09-22.** Inverted the rule: the helper is infrastructure now.\n"
+	if err := os.WriteFile(doc, []byte(explained), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin.Run(t, dir, "diff", ".", "--base", "baseref").MustPass(t).
+		MustSay(t, "mixed", "explained under Why (2026-09-22)")
 }
 
 // Test files legitimately reach infrastructure — a domain test may well spin up

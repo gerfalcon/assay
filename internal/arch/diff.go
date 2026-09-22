@@ -145,16 +145,30 @@ func union(a, b []string) []string {
 	return out
 }
 
-// FormatDiff renders a classification for a CI comment.
-func FormatDiff(c Change, detail []string) string {
+// FormatDiff renders a classification for a CI comment. explained lists the
+// dated Why entries this change added; a weakening with one is accepted.
+func FormatDiff(c Change, detail []string, explained []string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "architecture declaration: %s\n", c)
 	for _, d := range detail {
 		fmt.Fprintf(&b, "  %s\n", d)
 	}
 	if c.NeedsReview() {
-		b.WriteString("\nThis weakens the declared architecture. It needs a second reviewer\n" +
-			"and a `## Why` entry in the same file saying what changed and what for.\n")
+		if len(explained) > 0 {
+			fmt.Fprintf(&b, "\nThis weakens the declared architecture. It is explained under Why (%s),\n"+
+				"which is what the gate asks for; the pull request review is the second reviewer.\n",
+				strings.Join(explained, ", "))
+		} else {
+			b.WriteString("\nThis weakens the declared architecture. It needs a second reviewer\n" +
+				"and a `## Why` entry in the same file, starting with a bold date\n" +
+				"(**2026-01-31.**), saying what changed and what for.\n")
+		}
 	}
 	return b.String()
+}
+
+// Accepted reports whether a classification may pass: anything that is not a
+// weakening, or a weakening that arrived with a new Why entry.
+func Accepted(c Change, explained []string) bool {
+	return !c.NeedsReview() || len(explained) > 0
 }

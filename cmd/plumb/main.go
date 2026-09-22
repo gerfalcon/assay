@@ -389,9 +389,10 @@ func cmdDiff(args []string) error {
 	}
 
 	c, detail := arch.Diff(oldD, newD)
-	fmt.Print(arch.FormatDiff(c, detail))
-	if c.NeedsReview() {
-		return fmt.Errorf("declaration weakened")
+	explained := arch.NewWhyEntries(out, string(cur))
+	fmt.Print(arch.FormatDiff(c, detail, explained))
+	if !arch.Accepted(c, explained) {
+		return fmt.Errorf("declaration weakened without a Why entry")
 	}
 	return nil
 }

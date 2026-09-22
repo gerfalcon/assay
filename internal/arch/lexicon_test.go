@@ -281,3 +281,17 @@ func TestFormatDraftMarksUtilityLayers(t *testing.T) {
 		t.Errorf("a real domain was marked as utility: %q", cartLine)
 	}
 }
+
+func TestWhyEntries(t *testing.T) {
+	old := "# A\n\n**2026-01-01.** in the prose, does not count\n\n```arch\nlayer a a\nowns a x\n```\n\n## Why\n\n**2026-09-20.** first\n\n## Other\n\n**2026-09-21.** not under Why\n"
+	new := strings.Replace(old, "**2026-09-20.** first\n", "**2026-09-20.** first\n\n**2026-09-22.** second\n", 1)
+	if got := strings.Join(WhyEntries(old), ","); got != "2026-09-20" {
+		t.Errorf("WhyEntries(old) = %q", got)
+	}
+	if got := strings.Join(NewWhyEntries(old, new), ","); got != "2026-09-22" {
+		t.Errorf("NewWhyEntries = %q", got)
+	}
+	if !Accepted(Loosening, []string{"2026-09-22"}) || Accepted(Loosening, nil) || !Accepted(Tightening, nil) {
+		t.Error("Accepted: a loosening passes only when explained")
+	}
+}
