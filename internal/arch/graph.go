@@ -41,6 +41,29 @@ type goListPkg struct {
 // layered by this declaration, and including it would make every layer reach
 // every other through `fmt`.
 func LoadGoGraph(root string, includeTests bool) (*Graph, error) {
+	// Ask for the main module EXPLICITLY. Inferring it from the first package
+	// in a -deps stream that carries a Module.Path is wrong: -deps emits
+	// dependencies before dependents, so on any repository with third-party
+	// imports that first module is a library. Everything first-party then falls
+	// outside "the module", the graph comes back nearly empty, and the check
+	// reports "0 violations" — a silent pass, which is the one outcome this
+	// tool exists to prevent.
+	//
+	// It appeared to work only on a dependency-free module, and then only by
+	// luck: a first-party package importing nothing but stdlib happens to sort
+	// before the libraries. One added import would have turned the check off
+	// silently.
+	modCmd := exec.Command("go", "list", "-m")
+	modCmd.Dir = root
+	modOut, modErr := modCmd.Output()
+	if modErr != nil {
+		return nil, fmt.Errorf("go list -m in %s: %w (not a Go module?)", root, modErr)
+	}
+	mainModule := strings.TrimSpace(string(modOut))
+	if mainModule == "" || strings.Contains(mainModule, "\n") {
+		return nil, fmt.Errorf("could not determine a single main module in %s: %q", root, mainModule)
+	}
+
 	cmd := exec.Command("go", "list", "-e", "-deps", "-json", "./...")
 	cmd.Dir = root
 	out, err := cmd.Output()
@@ -56,11 +79,11 @@ func LoadGoGraph(root string, includeTests bool) (*Graph, error) {
 			return "\n" + msg
 		}())
 	}
-	return parseGoList(strings.NewReader(string(out)), includeTests)
+	return parseGoList(strings.NewReader(string(out)), mainModule, includeTests)
 }
 
-func parseGoList(r io.Reader, includeTests bool) (*Graph, error) {
-	g := &Graph{Edges: map[string][]string{}, Files: map[string]string{}}
+func parseGoList(r io.Reader, mainModule string, includeTests bool) (*Graph, error) {
+	g := &Graph{Module: mainModule, Edges: map[string][]string{}, Files: map[string]string{}}
 	dec := json.NewDecoder(r)
 	var pkgs []goListPkg
 
@@ -73,15 +96,10 @@ func parseGoList(r io.Reader, includeTests bool) (*Graph, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing go list output: %w", err)
 		}
-		// The main module is the one whose packages carry Module.Dir and are
-		// not from the module cache. Pick the first module we see with GoFiles.
-		if p.Module != nil && g.Module == "" && p.Module.Path != "" {
-			g.Module = p.Module.Path
-		}
 		pkgs = append(pkgs, p)
 	}
 	if g.Module == "" {
-		return nil, fmt.Errorf("could not determine the module path from go list output")
+		return nil, fmt.Errorf("no main module given")
 	}
 
 	inModule := func(ip string) bool {
