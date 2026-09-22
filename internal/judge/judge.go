@@ -44,18 +44,27 @@ var promptV1 string
 // prompt changes, so precision data never mixes two prompts.
 const Rule = "intent-drift@1"
 
-// Schema is the JSON shape every provider must return.
-var Schema = map[string]any{
-	"type": "object",
-	"properties": map[string]any{
+// answerProperties is the shape of one answer; Schema and the batch schema are
+// both built from it so the two can never drift apart.
+func answerProperties() (map[string]any, []string) {
+	return map[string]any{
 		"belongs":  map[string]any{"type": "boolean", "description": "true if the declaration belongs in its layer"},
 		"layer":    map[string]any{"type": "string", "description": "the layer it belongs in; the current layer when belongs is true"},
 		"reason":   map[string]any{"type": "string", "description": "one sentence naming the concept that is out of place"},
 		"citation": map[string]any{"type": "string", "description": "one sentence copied verbatim from the architecture document"},
-	},
-	"required":             []string{"belongs", "layer", "reason", "citation"},
-	"additionalProperties": false,
+	}, []string{"belongs", "layer", "reason", "citation"}
 }
+
+// Schema is the JSON shape every provider must return.
+var Schema = func() map[string]any {
+	props, required := answerProperties()
+	return map[string]any{
+		"type":                 "object",
+		"properties":           props,
+		"required":             required,
+		"additionalProperties": false,
+	}
+}()
 
 // Answer is a provider's parsed reply.
 type Answer struct {
@@ -79,10 +88,32 @@ type Provider interface {
 	Ask(ctx context.Context, system, user string) (json.RawMessage, Usage, error)
 }
 
+// Batcher is a provider that can judge several cases in one call. Claude Code
+// loads its own context on every invocation, so one call per declaration would
+// spend most of a plan's window on overhead; batching is what makes it usable.
+type Batcher interface {
+	Provider
+	// BatchSize is the most cases one call should carry.
+	BatchSize() int
+	// AskBatch returns one raw answer per request, in order.
+	AskBatch(ctx context.Context, system string, users []string) ([]json.RawMessage, Usage, error)
+}
+
 // Case is one declaration to judge, with the code around it.
 type Case struct {
-	Decl    arch.Declaration
-	Excerpt string
+	Decl    arch.Declaration `json:"decl"`
+	Excerpt string           `json:"excerpt"`
+}
+
+// Answered pairs an answer with the declaration it is about, so a judgement
+// made outside this process — by a person, or by Claude Code running the
+// skill — can be verified here on the same terms as one made by a provider.
+type Answered struct {
+	File string `json:"file"`
+	Line int    `json:"line"`
+	Name string `json:"name"`
+	In   string `json:"in"` // the layer it is declared in
+	Answer
 }
 
 // Finding is a judged drift with everything needed to act on it.
@@ -145,77 +176,161 @@ func Request(d *arch.Decl, c Case) string {
 	return b.String()
 }
 
-// Run judges every case, in parallel, with the cache in front of the provider.
+// Run judges every case, with the cache in front of the provider, then
+// verifies every answer.
 func Run(ctx context.Context, p Provider, o Options, cases []Case) (*Result, error) {
 	if o.Jobs <= 0 {
 		o.Jobs = 4
 	}
 	system := System(o.Doc)
-	docNorm := normalise(o.Doc)
-	layers := map[string]bool{}
-	for _, l := range o.Decl.Order {
-		layers[l] = true
-	}
 
 	type slot struct {
-		ans    Answer
+		raw    json.RawMessage
 		cached bool
 		usage  Usage
 		err    error
 	}
 	out := make([]slot, len(cases))
+	users := make([]string, len(cases))
+	for i, c := range cases {
+		users[i] = Request(o.Decl, c)
+	}
+
+	// Cache first, so a batch only carries what is genuinely unanswered.
+	var pending []int
+	for i := range cases {
+		if raw, ok := cached(o, p, system, users[i]); ok {
+			out[i] = slot{raw: raw, cached: true}
+			continue
+		}
+		pending = append(pending, i)
+	}
+
+	// Group into calls: one per case, or BatchSize per call for a Batcher.
+	size := 1
+	b, batching := p.(Batcher)
+	if batching && b.BatchSize() > 1 {
+		size = b.BatchSize()
+	}
+	var groups [][]int
+	for len(pending) > 0 {
+		n := min(size, len(pending))
+		groups = append(groups, pending[:n])
+		pending = pending[n:]
+	}
+
 	sem := make(chan struct{}, o.Jobs)
 	var wg sync.WaitGroup
-	for i, c := range cases {
+	for _, g := range groups {
 		wg.Add(1)
-		go func(i int, c Case) {
+		go func(g []int) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			raw, cached, usage, err := ask(ctx, p, o, system, Request(o.Decl, c), c)
+			var raws []json.RawMessage
+			var usage Usage
+			var err error
+			if len(g) == 1 && !batching {
+				var raw json.RawMessage
+				raw, usage, err = p.Ask(ctx, system, users[g[0]])
+				raws = []json.RawMessage{raw}
+			} else {
+				us := make([]string, len(g))
+				for j, i := range g {
+					us[j] = users[i]
+				}
+				raws, usage, err = b.AskBatch(ctx, system, us)
+				if err == nil && len(raws) != len(g) {
+					err = fmt.Errorf("provider answered %d of %d cases", len(raws), len(g))
+				}
+			}
 			if err != nil {
-				out[i] = slot{err: err}
+				out[g[0]] = slot{err: fmt.Errorf("%s: %w", cases[g[0]].Decl.Name, err)}
 				return
 			}
-			var ans Answer
-			if err := json.Unmarshal(raw, &ans); err != nil {
-				out[i] = slot{err: fmt.Errorf("%s: model returned invalid JSON: %w", c.Decl.Name, err)}
-				return
+			for j, i := range g {
+				out[i] = slot{raw: raws[j]}
+				if err := store(o, p, system, users[i], raws[j]); err != nil {
+					out[i] = slot{err: err}
+				}
 			}
-			out[i] = slot{ans: ans, cached: cached, usage: usage}
-		}(i, c)
+			out[g[0]].usage = usage // attribute the call's cost once
+		}(g)
 	}
 	wg.Wait()
 
 	res := &Result{}
+	answers := make([]Answer, len(cases))
 	for i, s := range out {
 		if s.err != nil {
 			return res, s.err
 		}
-		c := cases[i]
-		res.Judged++
+		if err := json.Unmarshal(s.raw, &answers[i]); err != nil {
+			return res, fmt.Errorf("%s: model returned invalid JSON: %w", cases[i].Decl.Name, err)
+		}
 		res.Usage.Input += s.usage.Input
 		res.Usage.Output += s.usage.Output
 		if s.cached {
 			res.Cached++
 		}
-		if s.ans.Belongs {
+	}
+	verify(res, o, cases, answers)
+	return res, nil
+}
+
+// Verify checks answers produced elsewhere — by a person, or by Claude Code
+// running the judge skill — on exactly the terms a provider's answers get.
+// Answers are matched to declarations by file, line and name; an answer for a
+// declaration that is not in the scan is ignored, and a declaration with no
+// answer is counted as unjudged rather than as belonging.
+func Verify(o Options, cases []Case, answered []Answered) (*Result, int) {
+	byKey := map[string]Answer{}
+	for _, a := range answered {
+		byKey[fmt.Sprintf("%s:%d:%s", a.File, a.Line, a.Name)] = a.Answer
+	}
+	var have []Case
+	var answers []Answer
+	unjudged := 0
+	for _, c := range cases {
+		a, ok := byKey[fmt.Sprintf("%s:%d:%s", c.Decl.File, c.Decl.Line, c.Decl.Name)]
+		if !ok {
+			unjudged++
+			continue
+		}
+		have = append(have, c)
+		answers = append(answers, a)
+	}
+	res := &Result{}
+	verify(res, o, have, answers)
+	return res, unjudged
+}
+
+func verify(res *Result, o Options, cases []Case, answers []Answer) {
+	docNorm := normalise(o.Doc)
+	layers := map[string]bool{}
+	for _, l := range o.Decl.Order {
+		layers[l] = true
+	}
+	for i, c := range cases {
+		ans := answers[i]
+		res.Judged++
+		if ans.Belongs {
 			res.Belongs++
 			continue
 		}
 		// Verification. Each of these is a way for a plausible answer to be
 		// wrong in a way a reader could not tell from the text.
 		switch {
-		case !layers[s.ans.Layer]:
-			res.Dropped = append(res.Dropped, Dropped{c, s.ans, fmt.Sprintf("names a layer that is not declared: %q", s.ans.Layer)})
-		case s.ans.Layer == c.Decl.Layer:
-			res.Dropped = append(res.Dropped, Dropped{c, s.ans, "says it does not belong but names the same layer"})
-		case strings.TrimSpace(s.ans.Citation) == "":
-			res.Dropped = append(res.Dropped, Dropped{c, s.ans, "no citation"})
-		case !strings.Contains(docNorm, normalise(s.ans.Citation)):
-			res.Dropped = append(res.Dropped, Dropped{c, s.ans, "citation is not in the document"})
+		case !layers[ans.Layer]:
+			res.Dropped = append(res.Dropped, Dropped{c, ans, fmt.Sprintf("names a layer that is not declared: %q", ans.Layer)})
+		case ans.Layer == c.Decl.Layer:
+			res.Dropped = append(res.Dropped, Dropped{c, ans, "says it does not belong but names the same layer"})
+		case strings.TrimSpace(ans.Citation) == "":
+			res.Dropped = append(res.Dropped, Dropped{c, ans, "no citation"})
+		case !strings.Contains(docNorm, normalise(ans.Citation)):
+			res.Dropped = append(res.Dropped, Dropped{c, ans, "citation is not in the document"})
 		default:
-			res.Findings = append(res.Findings, Finding{c, s.ans})
+			res.Findings = append(res.Findings, Finding{c, ans})
 		}
 	}
 	sort.Slice(res.Findings, func(i, j int) bool {
@@ -225,31 +340,34 @@ func Run(ctx context.Context, p Provider, o Options, cases []Case) (*Result, err
 		}
 		return a.Line < b.Line
 	})
-	return res, nil
 }
 
-func ask(ctx context.Context, p Provider, o Options, system, user string, c Case) (json.RawMessage, bool, Usage, error) {
-	key := ""
-	if o.CacheDir != "" {
-		h := sha256.Sum256([]byte(strings.Join([]string{Rule, p.Name(), system, user}, "\x00")))
-		key = filepath.Join(o.CacheDir, hex.EncodeToString(h[:16])+".json")
-		if raw, err := os.ReadFile(key); err == nil {
-			return raw, true, Usage{}, nil
-		}
+func cacheKey(o Options, p Provider, system, user string) string {
+	if o.CacheDir == "" {
+		return ""
 	}
-	raw, usage, err := p.Ask(ctx, system, user)
-	if err != nil {
-		return nil, false, usage, fmt.Errorf("%s: %w", c.Decl.Name, err)
+	h := sha256.Sum256([]byte(strings.Join([]string{Rule, p.Name(), system, user}, "\x00")))
+	return filepath.Join(o.CacheDir, hex.EncodeToString(h[:16])+".json")
+}
+
+func cached(o Options, p Provider, system, user string) (json.RawMessage, bool) {
+	key := cacheKey(o, p, system, user)
+	if key == "" {
+		return nil, false
 	}
-	if key != "" {
-		if err := os.MkdirAll(o.CacheDir, 0o755); err != nil {
-			return nil, false, usage, err
-		}
-		if err := os.WriteFile(key, raw, 0o644); err != nil {
-			return nil, false, usage, err
-		}
+	raw, err := os.ReadFile(key)
+	return raw, err == nil
+}
+
+func store(o Options, p Provider, system, user string, raw json.RawMessage) error {
+	key := cacheKey(o, p, system, user)
+	if key == "" {
+		return nil
 	}
-	return raw, false, usage, nil
+	if err := os.MkdirAll(o.CacheDir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(key, raw, 0o644)
 }
 
 // normalise collapses whitespace so a citation survives line wrapping in the

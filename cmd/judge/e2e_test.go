@@ -58,3 +58,23 @@ func TestScanNeedsAProvider(t *testing.T) {
 	dir := cmdtest.Tree(t, map[string]string{"ARCHITECTURE.md": "```arch\nlayer a a\nowns a x\n```\n"})
 	bin.Run(t, dir, "scan", ".").MustFail(t).MustSay(t, "no provider")
 }
+
+// The skill's round trip: cases out, answers in, findings out — no model.
+func TestCasesAndVerifyRoundTrip(t *testing.T) {
+	bin := cmdtest.Build(t, "judge")
+	dir := cmdtest.Tree(t, map[string]string{
+		"ARCHITECTURE.md":           "# Architecture\n\nRatings belong to the rating layer.\n\n```arch\nlayer cart internal/cart\nlayer rating internal/rating\nowns rating rating\n```\n",
+		"internal/cart/cart.go":     "package cart\n\nfunc AverageStars() int { return 0 }\n",
+		"internal/rating/rating.go": "package rating\n\ntype Rating struct{}\n",
+	})
+	r := bin.Run(t, dir, "cases", ".").MustPass(t).MustSay(t, `"Name":"AverageStars"`, "2 cases")
+	if !strings.Contains(r.Stdout, `"excerpt":"func AverageStars()`) {
+		t.Errorf("cases must carry the excerpt: %s", r.Stdout)
+	}
+	cmdtest.WriteFile(t, dir, "answers.jsonl",
+		`{"file":"internal/cart/cart.go","line":3,"name":"AverageStars","in":"cart","belongs":false,"layer":"rating","reason":"averages ratings","citation":"Ratings belong to the rating layer."}`+"\n"+
+			`{"file":"internal/rating/rating.go","line":3,"name":"Rating","in":"rating","belongs":true}`+"\n")
+	bin.Run(t, dir, "verify", ".", "--answers", "answers.jsonl", "--model", "skill", "--emit", "findings").
+		MustPass(t).MustSay(t, `"rule":"intent-drift@1"`, `"tool":"judge/external/skill"`, "AverageStars", "2 judged")
+	bin.Run(t, dir, "verify", ".").MustFail(t).MustSay(t, "--answers")
+}

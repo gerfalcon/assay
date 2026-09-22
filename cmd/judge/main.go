@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -23,12 +24,14 @@ import (
 const usage = `judge — ask a model whether declarations belong where they are
 
   judge scan [dir]      judge declarations changed since --base (default: all)
+  judge cases [dir]     print the declarations scan would judge, as JSONL
+  judge verify [dir]    verify answers made elsewhere (--answers FILE) and emit findings
   judge doctor          check the provider answers
   judge version
 
 Flags
   --doc <path>       declaration (default ARCHITECTURE.md)
-  --provider <name>  anthropic | gemini | openai   (default $JUDGE_PROVIDER)
+  --provider <name>  anthropic | gemini | openai | claude-code   (default $JUDGE_PROVIDER)
   --model <id>       model id                       (default $JUDGE_MODEL; anthropic defaults to claude-opus-5)
   --base-url <url>   override the provider endpoint (default $JUDGE_BASE_URL)
   --effort <level>   anthropic: low | medium | high (default low)
@@ -39,8 +42,15 @@ Flags
   --cache <dir>      response cache (default .assay/judge; "-" disables)
   --emit findings    write JSONL to stdout for ratchet, strata and docket
   --include-tests    judge declarations in test files too
+  --answers <file>   verify: JSONL of answers, one per declaration
 
-Keys are read from ANTHROPIC_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY.
+Two ways to pay. anthropic, gemini and openai bill per token against an API
+key (ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY; anthropic also honours
+an "ant auth login" profile). claude-code runs the Claude Code CLI headless, so
+a Claude subscription covers it; it batches several declarations per call
+because each call carries Claude Code's own context. The judge skill is the
+third path: Claude Code reads the code itself and hands its answers to
+judge verify, which applies the same checks.
 
 Every finding cites a sentence that exists verbatim in the document; answers
 that cannot are dropped and counted. Findings are warnings: nothing gates on
@@ -56,6 +66,10 @@ func main() {
 	switch os.Args[1] {
 	case "scan":
 		err = cmdScan(os.Args[2:])
+	case "cases":
+		err = cmdCases(os.Args[2:])
+	case "verify":
+		err = cmdVerify(os.Args[2:])
 	case "doctor":
 		err = cmdDoctor(os.Args[2:])
 	case "version", "-v", "--version":
@@ -73,10 +87,10 @@ func main() {
 }
 
 type opts struct {
-	dir, doc, base, layer, emit, cache string
-	cfg                                judge.Config
-	context, jobs                      int
-	includeTests                       bool
+	dir, doc, base, layer, emit, cache, answers string
+	cfg                                         judge.Config
+	context, jobs                               int
+	includeTests                                bool
 }
 
 func parseArgs(args []string) (opts, error) {
@@ -99,6 +113,7 @@ func parseArgs(args []string) (opts, error) {
 	fs.IntVar(&o.context, "context", o.context, "source lines per declaration")
 	fs.IntVar(&o.jobs, "jobs", o.jobs, "parallel requests")
 	fs.BoolVar(&o.includeTests, "include-tests", false, "judge test files too")
+	fs.StringVar(&o.answers, "answers", "", "verify: answers JSONL")
 
 	var positional []string
 	rest := args
@@ -122,49 +137,124 @@ func parseArgs(args []string) (opts, error) {
 	return o, nil
 }
 
-func cmdScan(args []string) error {
-	o, err := parseArgs(args)
-	if err != nil {
-		return err
-	}
+// gather reads the document and collects the declarations to judge.
+func gather(o opts) (doc string, d *arch.Decl, cases []judge.Case, err error) {
 	docPath := o.doc
 	if !filepath.IsAbs(docPath) {
 		docPath = filepath.Join(o.dir, o.doc)
 	}
 	raw, err := os.ReadFile(docPath)
 	if err != nil {
-		return fmt.Errorf("reading %s: %w\n\nThe judge reads intent from the document; without one there is nothing to judge against", docPath, err)
+		return "", nil, nil, fmt.Errorf("reading %s: %w\n\nThe judge reads intent from the document; without one there is nothing to judge against", docPath, err)
 	}
-	d, err := arch.ParseDoc(string(raw))
+	d, err = arch.ParseDoc(string(raw))
 	if err != nil {
-		return fmt.Errorf("%s: %w", o.doc, err)
+		return "", nil, nil, fmt.Errorf("%s: %w", o.doc, err)
 	}
-	p, err := judge.New(o.cfg)
-	if err != nil {
-		return err
-	}
-
 	decls, err := arch.ScanDecls(o.dir, d, o.includeTests)
 	if err != nil {
-		return err
+		return "", nil, nil, err
 	}
 	if o.base != "" {
 		changed, err := changedFiles(o.dir, o.base)
 		if err != nil {
-			return err
+			return "", nil, nil, err
 		}
 		decls = keep(decls, func(x arch.Declaration) bool { return changed[x.File] })
 	}
 	if o.layer != "" {
 		decls = keep(decls, func(x arch.Declaration) bool { return x.Layer == o.layer })
 	}
-	cases := make([]judge.Case, 0, len(decls))
 	for _, dc := range decls {
 		ex, err := judge.Excerpt(o.dir, dc, o.context)
 		if err != nil {
-			return err
+			return "", nil, nil, err
 		}
 		cases = append(cases, judge.Case{Decl: dc, Excerpt: ex})
+	}
+	return string(raw), d, cases, nil
+}
+
+func cmdCases(args []string) error {
+	o, err := parseArgs(args)
+	if err != nil {
+		return err
+	}
+	_, _, cases, err := gather(o)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(os.Stdout)
+	for _, c := range cases {
+		if err := enc.Encode(c); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(os.Stderr, "%d cases\n", len(cases))
+	return nil
+}
+
+func cmdVerify(args []string) error {
+	o, err := parseArgs(args)
+	if err != nil {
+		return err
+	}
+	if o.answers == "" {
+		return fmt.Errorf("verify needs --answers FILE (JSONL, one object per declaration: file, line, name, in, belongs, layer, reason, citation)")
+	}
+	doc, d, cases, err := gather(o)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(o.answers)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	var answered []judge.Answered
+	dec := json.NewDecoder(f)
+	for dec.More() {
+		var a judge.Answered
+		if err := dec.Decode(&a); err != nil {
+			return fmt.Errorf("%s: %w", o.answers, err)
+		}
+		answered = append(answered, a)
+	}
+	res, unjudged := judge.Verify(judge.Options{Doc: doc, Decl: d}, cases, answered)
+	p := external{o.cfg.Model}
+	if unjudged > 0 {
+		fmt.Fprintf(os.Stderr, "%d declarations had no answer\n", unjudged)
+	}
+	return report(o, res, p, gitLog1(o.dir, o.doc))
+}
+
+// external names the source of answers that did not come from a provider, so
+// the finding records still say who judged.
+type external struct{ label string }
+
+func (e external) Name() string {
+	if e.label == "" {
+		return "external/unspecified"
+	}
+	return "external/" + e.label
+}
+func (e external) Ask(context.Context, string, string) (json.RawMessage, judge.Usage, error) {
+	return nil, judge.Usage{}, fmt.Errorf("external answers cannot be asked")
+}
+
+func cmdScan(args []string) error {
+	o, err := parseArgs(args)
+	if err != nil {
+		return err
+	}
+	doc, d, cases, err := gather(o)
+	if err != nil {
+		return err
+	}
+	raw := doc
+	p, err := judge.New(o.cfg)
+	if err != nil {
+		return err
 	}
 	if len(cases) == 0 {
 		fmt.Fprintln(os.Stderr, "nothing to judge")
@@ -184,8 +274,10 @@ func cmdScan(args []string) error {
 	if err != nil {
 		return err
 	}
-	declSHA := gitLog1(o.dir, o.doc)
+	return report(o, res, p, gitLog1(o.dir, o.doc))
+}
 
+func report(o opts, res *judge.Result, p judge.Provider, declSHA string) error {
 	if o.emit == "findings" {
 		enc := schema.NewEncoder(os.Stdout)
 		for _, f := range res.ModelFindings(p, declSHA) {

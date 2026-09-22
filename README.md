@@ -215,9 +215,34 @@ rule — which is how you find out whether a local model is good enough for your
 repository, rather than arguing about it. Findings are warnings until a team
 has that number and chooses to gate.
 
-Adapters: Anthropic (native, with the document cached across calls), Gemini,
-and OpenAI including Codex models. Responses are cached on disk, so a rerun on
-an unchanged tree costs nothing and a whole-repo pass is incremental.
+Responses are cached on disk, so a rerun on an unchanged tree costs nothing
+and a whole-repo pass is incremental.
+
+**Two ways to pay, one toggle.** `--provider` (or `JUDGE_PROVIDER`) selects
+who answers:
+
+| provider | bills against | when |
+|---|---|---|
+| `anthropic`, `gemini`, `openai` (Codex models by name) | an API key, per token — `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`; anthropic also honours an `ant auth login` profile | a team with API billing; CI |
+| `claude-code` (aliases `plan`, `max`) | a Claude subscription, via the Claude Code CLI in headless mode | a person with a plan and no credits |
+
+```sh
+JUDGE_PROVIDER=anthropic   judge scan . --base origin/main     # at work: per-token
+JUDGE_PROVIDER=claude-code judge scan . --base origin/main     # at home: the plan
+```
+
+The `claude-code` provider batches several declarations per call, because
+each call carries Claude Code's own context and a plan is a usage window
+rather than a per-token price. It gives the model no tools: the question is
+answered from the excerpt, exactly as with the API providers, so the two are
+comparable.
+
+The third path is the **judge skill** in `.claude/skills/judge`, for when you
+want Claude Code to read *further* than the excerpt — follow a call, open the
+test — on the plan. It lists the cases with `judge cases`, judges them in the
+session, and hands its answers to `judge verify`, which applies the same
+citation and layer checks and emits the same findings. Copy the directory to
+`~/.claude/skills/judge/` once and it is available in every repository.
 
 ## Why
 

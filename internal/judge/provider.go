@@ -18,7 +18,7 @@ import (
 // Config selects a provider. Three wire protocols cover the clouds asked for;
 // a base URL override lets tests and proxies stand in for any of them.
 type Config struct {
-	Provider string // anthropic | gemini | openai (codex is an alias)
+	Provider string // anthropic | gemini | openai (codex) | claude-code (plan, max)
 	Model    string
 	BaseURL  string
 	APIKey   string // "" reads the provider's usual environment variable
@@ -74,10 +74,12 @@ func New(c Config) (Provider, error) {
 			base = "https://api.openai.com"
 		}
 		return &OpenAI{model: c.Model, key: key, base: strings.TrimRight(base, "/"), client: httpClient()}, nil
+	case "claude-code", "plan", "max":
+		return newClaudeCode(c.Model)
 	case "":
-		return nil, fmt.Errorf("no provider: pass --provider anthropic|gemini|openai or set JUDGE_PROVIDER")
+		return nil, fmt.Errorf("no provider: pass --provider anthropic|gemini|openai|claude-code or set JUDGE_PROVIDER")
 	default:
-		return nil, fmt.Errorf("unknown provider %q (anthropic, gemini, openai)", c.Provider)
+		return nil, fmt.Errorf("unknown provider %q (anthropic, gemini, openai, claude-code)", c.Provider)
 	}
 }
 

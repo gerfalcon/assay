@@ -191,3 +191,59 @@ func strconvQuote(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
 }
+
+// The Claude Code provider is a process. A fake binary stands in for it and
+// answers a batch, so the mapping from case numbers back to cases is tested
+// without a subscription.
+func TestClaudeCodeBatchesAndMapsAnswers(t *testing.T) {
+	dir := t.TempDir()
+	py := filepath.Join(dir, "fake.py")
+	os.WriteFile(py, []byte(`import sys, json, re
+prompt = sys.stdin.read()
+parts = re.split(r'===== CASE (\d+) =====', prompt)[1:]
+answers = []
+for i in range(0, len(parts), 2):
+    n, body = int(parts[i]), parts[i+1]
+    if 'AverageStars' in body:
+        answers.append({"index": n, "belongs": False, "layer": "rating", "reason": "r", "citation": "Ratings and reviews belong to the rating layer, which owns the score."})
+    else:
+        answers.append({"index": n, "belongs": True, "layer": "", "reason": "", "citation": ""})
+print(json.dumps({"type": "result", "is_error": False, "result": "", "structured_output": {"answers": answers}, "usage": {"input_tokens": 100, "output_tokens": 50}}))
+`), 0o644)
+	fake := filepath.Join(dir, "claude")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nexec python3 "+py+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JUDGE_CLAUDE_BIN", fake)
+	p, err := New(Config{Provider: "max"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := p.(Batcher); !ok {
+		t.Fatal("claude-code must batch")
+	}
+	res, err := Run(context.Background(), p, Options{Doc: doc, Decl: decl(t), Jobs: 1}, cases())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Judged != 4 || len(res.Findings) != 1 || res.Findings[0].Decl.Name != "AverageStars" {
+		t.Errorf("result = judged %d findings %+v", res.Judged, res.Findings)
+	}
+	if res.Usage.Input != 100 {
+		t.Errorf("one batched call should cost once, got %+v", res.Usage)
+	}
+}
+
+func TestVerifyExternalAnswers(t *testing.T) {
+	cs := cases()
+	answered := []Answered{
+		{File: cs[0].Decl.File, Line: cs[0].Decl.Line, Name: cs[0].Decl.Name, In: "cart",
+			Answer: Answer{Belongs: false, Layer: "rating", Reason: "r", Citation: "Ratings and reviews belong to the rating layer, which owns the score."}},
+		{File: cs[1].Decl.File, Line: cs[1].Decl.Line, Name: cs[1].Decl.Name, In: "cart", Answer: Answer{Belongs: true}},
+		{File: "nowhere.go", Line: 1, Name: "Ghost", In: "cart", Answer: Answer{Belongs: false, Layer: "rating", Citation: "x"}},
+	}
+	res, unjudged := Verify(Options{Doc: doc, Decl: decl(t)}, cs, answered)
+	if unjudged != 2 || res.Judged != 2 || len(res.Findings) != 1 || res.Findings[0].Decl.Name != "AverageStars" {
+		t.Errorf("unjudged=%d judged=%d findings=%+v", unjudged, res.Judged, res.Findings)
+	}
+}
