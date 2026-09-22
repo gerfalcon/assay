@@ -29,6 +29,45 @@ the baseline package is perfectly layered and still in the wrong place. So each
 layer below names the vocabulary it owns. A type or function whose name carries
 another layer's vocabulary is responsibility drift, wherever its imports point.
 
+## How the tools fit together
+
+The interface between tools is not a Go API. It is four record types, one JSON
+object per line, defined in `pkg/schema` and readable with `grep` and `jq`
+without any binary here. A tool that reads and writes them composes with the
+rest, in any language.
+
+| record | produced by | consumed by |
+|---|---|---|
+| `finding` | `ratchet scan`, `ratchet import` (SARIF from any linter), `plumb`, `judge` | `ratchet check`, `strata append`, `docket`, `lens` |
+| `measure` | `ratchet scan`, `ratchet history` | `strata append`, `strata rollup`, `lens` |
+| `verdict` | `ratchet scan --emit` (from `quality:` comments and `.quality.yaml`), `strata verdicts` | `strata precision`, `strata export`, `docket` |
+| `ticket` | `docket create`, `docket sync` | `docket status`, `docket sync` |
+
+Two files are contracts of a different kind. `.ratchet-baseline.json` and
+`.plumb-baseline.json` record what a repository has agreed to tolerate; they
+are committed, and the gate fails only on what is new. `ARCHITECTURE.md` is
+this file: the block below is what `plumb` enforces and `judge` reads for
+intent. How each tool is run, and which rules `ratchet` ships with, is in the
+README and `docs/USAGE.md` — that is usage, and it changes more often than
+structure.
+
+## Reading the enforced block
+
+The block is a fenced ` ```arch ` section. Blank lines and anything after `#`
+are ignored. Every other line is one of three statements, and an unknown word
+is an error rather than a no-op, so a typo cannot silently drop a rule.
+
+| statement | meaning |
+|---|---|
+| `layer <name> <path>...` | Names a layer and the module-relative directories in it. A package belongs to the layer with the longest matching prefix, so `internal/domain/billing` in its own layer beats `internal/domain` in another. |
+| `forbid <a> -> <b>` | No package in layer `a` may reach any package in layer `b`, **transitively**. A direct-import check would miss `a -> helper -> b`, which is the same dependency one hop away and is what an ordinary refactor produces. Go only. |
+| `owns <layer> <term>...` | The vocabulary this layer declares. A type or function in this layer whose name carries a term another layer owns is `responsibility-drift`. Calls are never checked; that is what `forbid` is for. A term has exactly one owner. A layer with no `owns` line is a consumer and is never checked. Any language `plumb` can read. |
+
+Both rules are checked against the code by `plumb`, tolerated by
+`.plumb-baseline.json`, and classified on change by `plumb diff`: adding a
+rule or a term is a tightening and is free; removing one is a loosening and
+needs a second reviewer and an entry under Why.
+
 <!-- The block below is ENFORCED by `make arch`. It is not decoration.
      Editing it is an architectural change: `plumb diff` classifies it, and a
      loosening needs a second reviewer and an entry under Why. -->
