@@ -88,8 +88,9 @@ for us to maintain.
 # Go
 golangci-lint run --out-format sarif | ratchet import - --mode check
 
-# C# — Roslyn analyzers
-dotnet build -p:ErrorLog=roslyn.sarif
+# C# — Roslyn analyzers. `version=2.1` is not optional: Roslyn's ErrorLog
+# defaults to SARIF 1.0, which is a different document shape entirely.
+dotnet build -p:ErrorLog=roslyn.sarif,version=2.1
 ratchet import roslyn.sarif --root . --mode baseline
 
 # Dart
@@ -384,7 +385,7 @@ same module — those are cohesion, not shotgun surgery.
 | many | `lizard` | MIT |
 | Python | `wily` (per-commit history built in) | Apache-2.0 |
 | Dart | `dart_code_linter` | MIT |
-| C# | Roslyn analyzers via `ErrorLog=*.sarif` | MIT |
+| C# | Roslyn analyzers via `ErrorLog=*.sarif,version=2.1` | MIT |
 
 ### Duplication
 
