@@ -23,7 +23,7 @@ jobs:
       # does both.
       - name: Commit authorship
         run: |
-          allowed="sven.herzing@gmail.com"
+          allowed="sven.herzing@gmail.com 15221068+gerfalcon@users.noreply.github.com"
           # On a pull request HEAD is GitHub's synthetic merge commit, committed
           # as noreply@github.com; range to the branch tip instead.
           range="${{ github.event_name == 'pull_request'
@@ -32,7 +32,7 @@ jobs:
           # First push to a branch reports an all-zero "before"; check the tip.
           case "$range" in *0000000000000000000000000000000000000000*) range="HEAD~1..HEAD" ;; esac
           bad=$(git log --format='%H %ae %ce' "$range" 2>/dev/null \
-                | awk -v ok="$allowed" '$2 != ok || $3 != ok')
+                | awk -v ok="$allowed" 'BEGIN { n = split(ok, a, " "); for (i = 1; i <= n; i++) m[a[i]] = 1 } !($2 in m) || !($3 in m)')
           if [ -n "$bad" ]; then
             echo "commits with an unapproved author or committer email:"
             echo "$bad"
