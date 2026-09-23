@@ -120,6 +120,10 @@ Three behaviours worth knowing:
   told no gets switched off entirely.
 - **Fingerprints exclude line numbers.** A reformat must not read as a wave of
   new violations. The producer's own `partialFingerprints` are used when present.
+- **Imported findings are first-class.** `.quality.yaml` verdicts apply to them,
+  and `ratchet import … --emit findings|measures` writes the same records a scan
+  does, so they reach `strata` and `docket`. `--repo`, `--commit` and `--ts`
+  stamp the records; `--ts` lets a history backfill land on its commit's day.
 
 ---
 

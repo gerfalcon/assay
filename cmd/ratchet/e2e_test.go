@@ -611,6 +611,36 @@ func TestImportSarifBaselineAndCheck(t *testing.T) {
 		MustSay(t, "unknown mode")
 }
 
+// Imported findings get the same treatment as a native scan: .quality.yaml
+// verdicts apply, and --emit writes the records strata and docket read. Before
+// this, the documented `import --json | docket plan` pipeline ticketed nothing,
+// because the JSON report's findings carry no record kind.
+func TestImportAppliesConfigVerdictsAndEmitsRecords(t *testing.T) {
+	bin := ratchet(t)
+	dir := cmdtest.Tree(t, map[string]string{
+		".quality.yaml": "verdicts:\n  - rule: otherlint:NULLREF\n    verdict: wont-fix\n    reason: guarded by the caller\n",
+		"r.sarif": `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"otherlint"}},"results":[
+  {"ruleId":"NULLREF","level":"error","message":{"text":"possible nil dereference"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/Handler.cs"},"region":{"startLine":42,"startColumn":9}}}]},
+  {"ruleId":"UNUSED","level":"warning","message":{"text":"unused local"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/Parser.cs"},"region":{"startLine":7,"startColumn":3}}}]}]}]}`,
+	})
+
+	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--json").MustPass(t).
+		MustSay(t, `"verdict": "wont-fix"`, `"verdictSource": "config"`)
+
+	f := bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "findings",
+		"--repo", "svc", "--commit", "abc123", "--ts", "2026-01-15", "--org=-").MustPass(t)
+	f.MustSay(t, `"kind":"finding"`, `"rule":"otherlint:UNUSED"`, `"repo":"svc"`, `"commit":"abc123"`,
+		`"ts":"2026-01-15T00:00:00Z"`, `"kind":"verdict"`, `"verdict":"wont-fix"`)
+	f.MustNotSay(t, `"kind":"measure"`)
+
+	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "measures", "--repo", "svc", "--org=-").MustPass(t).
+		MustSay(t, `"kind":"measure"`, `"metric":"findings.total"`, `"value":2`, `"metric":"findings.rule.otherlint:NULLREF"`)
+
+	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "measures", "--ts", "yesterday").MustFail(t).
+		MustSay(t, "want YYYY-MM-DD")
+	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "sideways").MustFail(t).MustSay(t, "unknown --emit")
+}
+
 // exceptions is the "what have we agreed to live with" report. Its value is
 // that an expired review-by date is visible; an exception nobody revisits is
 // how a baseline becomes permanent.
