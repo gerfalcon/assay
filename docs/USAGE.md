@@ -617,6 +617,38 @@ dart run dart_code_linter:metrics analyze lib --reporter=json > dcl.json
 No SARIF reporter, so you own a small converter (~40 lines mapping
 `records[].issues[]` to SARIF `results[]`). Add `lakos` for cycle detection.
 
+### Dart and Flutter — DCM metrics
+
+[DCM](https://dcm.dev) is the analyser Flutter teams run, and its metrics are
+the reason: cyclomatic complexity, nesting, widget nesting and widgets per
+build method, class cohesion and coupling. It has no SARIF reporter, and SARIF
+would drop the metrics anyway, so `ratchet import` reads DCM's own JSON. The
+format is sniffed from the document; `--format dcm` forces it.
+
+```sh
+flutter pub get   # DCM does not resolve dependencies itself
+dcm run --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --emit measures --repo myapp | strata append
+lens top --store .assay --metric cyclomatic --n 10
+lens calibrate --store .assay --lang dart      # bands from your own corpus
+```
+
+`--report-all` makes DCM report every metric value rather than only threshold
+breaches; without it the distributions are meaningless. `--no-fatal-found`
+stops DCM failing the build by itself. DCM analyses only what
+`analysis_options.yaml` configures: with no `dcm:` block, `metricResults` is
+silently empty; `dcm init metrics-preview --format=analysis_options lib` writes
+one.
+
+Measures use the Go scan's names, `cyclomatic`, `nesting`, `params`, `sloc`,
+plus DCM's own such as `widgets.nesting`, at function, file and `class` scope,
+with project roll-ups like `cyclomatic.p90`, so one `lens trend` query serves a
+Dart repo and a Go repo alike. The metrics also fill the per-function records,
+so `ratchet import dcm.json --json` reads like a native scan and `--mode check
+--strict-caps` holds peak cyclomatic complexity and nesting. Cognitive
+complexity stays 0: DCM has no such metric. Several reports, such as one per
+package of a monorepo, merge into one import.
+
 ### Anything else
 
 If it emits SARIF, `ratchet import` reads it: CodeQL, Trivy, ESLint

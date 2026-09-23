@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -639,6 +640,43 @@ func TestImportAppliesConfigVerdictsAndEmitsRecords(t *testing.T) {
 	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "measures", "--ts", "yesterday").MustFail(t).
 		MustSay(t, "want YYYY-MM-DD")
 	bin.Run(t, dir, "import", "r.sarif", "--root", ".", "--emit", "sideways").MustFail(t).MustSay(t, "unknown --emit")
+}
+
+// DCM is how Dart metrics reach the store: one import yields the measures,
+// the Go-shaped per-function records, and real caps for the baseline.
+func TestImportDcmMeasuresAndCaps(t *testing.T) {
+	bin := ratchet(t)
+	dir := t.TempDir()
+	report := func(file string, cyc int) string {
+		return `{"formatVersion":13,"metricResults":[{"path":"` + file + `","issues":[
+  {"id":"cyclomatic-complexity","message":"","location":{"startLine":3,"startColumn":3,"endLine":5,"endColumn":4},"level":"below","threshold":20,"value":` + strconv.Itoa(cyc) + `,"declarationName":"Foo.add"},
+  {"id":"widgets-nesting-level","message":"","location":{"startLine":3,"startColumn":3,"endLine":5,"endColumn":4},"level":"below","threshold":8,"value":4,"declarationName":"Foo.add"}]}]}`
+	}
+	cmdtest.WriteFile(t, dir, "calm.json", report("lib/a.dart", 1))
+	cmdtest.WriteFile(t, dir, "spiky.json", report("lib/a.dart", 30))
+	cmdtest.WriteFile(t, dir, "other.json", report("lib/b.dart", 7))
+
+	bin.Run(t, dir, "import", "calm.json", "--root", ".").MustPass(t).
+		MustSay(t, "imported 0 findings", "measured 1 declaration")
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--json").MustPass(t).
+		MustSay(t, `"name": "Foo.add"`, `"cyclomatic": 1`, `"files": 1`)
+
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--emit", "measures",
+		"--repo", "app", "--ts", "2026-01-15", "--commit", "abc123", "--org=-").MustPass(t).
+		MustSay(t, `"kind":"measure"`, `"scope":"function"`, `"path":"lib/a.dart:Foo.add"`, `"metric":"cyclomatic"`,
+			`"metric":"widgets.nesting"`, `"metric":"cyclomatic.p90"`, `"metric":"funcs"`, `"repo":"app"`,
+			`"commit":"abc123"`, `"ts":"2026-01-15T00:00:00Z"`)
+
+	// Caps come from the metrics, so a Dart baseline can hold a ceiling too.
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--mode", "baseline").MustPass(t)
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--mode", "check", "--strict-caps").MustPass(t).MustSay(t, "0 new")
+	bin.Run(t, dir, "import", "spiky.json", "--root", ".", "--mode", "check", "--strict-caps").MustFail(t).
+		MustSay(t, "cap breach", "cyclomatic 30 exceeds baseline 1")
+	bin.Run(t, dir, "import", "spiky.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+
+	// Several reports merge, as SARIF files do, with one set of roll-ups.
+	bin.Run(t, dir, "import", "calm.json", "other.json", "--root", ".", "--emit", "measures", "--repo", "app", "--org=-").MustPass(t).
+		MustSay(t, "merged 2 reports", `"path":"lib/b.dart:Foo.add"`, `"metric":"funcs","value":2`)
 }
 
 // exceptions is the "what have we agreed to live with" report. Its value is

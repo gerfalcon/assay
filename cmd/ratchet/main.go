@@ -24,6 +24,7 @@ import (
 
 	"github.com/sherzing/assay/internal/analyze"
 	"github.com/sherzing/assay/internal/baseline"
+	"github.com/sherzing/assay/internal/dcm"
 	"github.com/sherzing/assay/internal/learn"
 	"github.com/sherzing/assay/internal/model"
 	"github.com/sherzing/assay/internal/report"
@@ -82,7 +83,7 @@ usage:
   ratchet baseline [flags] [path]   record current state as tolerated
   ratchet check    [flags] [path]   exit non-zero only on regression
   ratchet history  [flags] [path]   metric series over git history
-  ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
+  ratchet import   [flags] <file>   ingest SARIF from any linter or DCM JSON for Dart, then baseline/check
   ratchet exceptions [path]         everything currently tolerated, and why
   ratchet learn <repo>...           derive candidate rules from codebases you trust
   ratchet rules                     list rules
@@ -737,13 +738,13 @@ func cmdRules() {
 	}
 }
 
-// cmdImport ingests SARIF from any linter, so the ratchet works on languages
-// ratchet cannot parse. Imported findings get the same verdicts and the same
-// record emission as a native scan.
+// cmdImport ingests another tool's report: SARIF from any linter, or DCM's JSON
+// for Dart metrics. The format is sniffed, so the command line is the same.
 func cmdImport(args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
 	var o importOpts
 	fs.StringVar(&o.root, "root", ".", "repository root: report paths are relative to it, and source is read from under it")
+	fs.StringVar(&o.format, "format", "auto", "input format: auto|sarif|dcm")
 	fs.StringVar(&o.tool, "tool", "", "sarif: override the tool name used to namespace rule IDs")
 	fs.StringVar(&o.file, "file", defaultBaselineFile, "baseline path")
 	fs.StringVar(&o.mode, "mode", "report", "report | baseline | check")
@@ -756,11 +757,14 @@ func cmdImport(args []string) error {
 	fs.StringVar(&o.ts, "ts", "", "timestamp for emitted records, YYYY-MM-DD or RFC 3339 (default: now)")
 	fs.StringVar(&o.org, "org", "",
 		"organisation to attribute evidence to (else .quality.yaml org:, else inferred from git email; - for none)")
+	fs.BoolVar(&o.strictCaps, "strict-caps", false, "mode=check: also fail if peak complexity exceeds the baseline")
 	srcs := parseArgsMulti(fs, args)
 	if len(srcs) == 0 {
-		return fmt.Errorf("usage: ratchet import [flags] <file.sarif>...\n" +
+		return fmt.Errorf("usage: ratchet import [flags] <file.sarif | dcm.json>...\n" +
 			"  several files are merged, which is what a multi-project build produces\n" +
-			"  pipe with: golangci-lint run --out-format sarif | ratchet import -")
+			"  pipe with: golangci-lint run --out-format sarif | ratchet import -\n" +
+			"  dart:      dcm run --analyze --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib\n" +
+			"             ratchet import dcm.json --root .")
 	}
 
 	in, err := decodeImport(srcs, o)
@@ -783,45 +787,101 @@ func cmdImport(args []string) error {
 
 // importOpts are the import flags, so the steps below can be separate functions.
 type importOpts struct {
-	root, tool, file, mode           string
+	root, format, tool, file, mode   string
 	includeSuppressed, force, asJSON bool
 	emit, repo, commit, ts, org      string
+	strictCaps                       bool
 }
 
 // imported is a decoded report, whichever producer wrote it.
 type imported struct {
-	rep *model.Report
-	cfg verdict.Config
+	rep      *model.Report
+	measures []schema.Measure
+	dcm      *dcm.Result // nil unless the document was DCM
+	cfg      verdict.Config
+	files    int // known only when the producer counted them
 }
 
-// decodeImport reads every document and merges the results. Merge, do not
-// take the first: a .NET solution writes one SARIF per project.
+// decodeImport reads every document and merges the results. Merge, do not take the first:
+// a .NET solution writes one SARIF per project, and a monorepo runs DCM per package.
 func decodeImport(srcs []string, o importOpts) (*imported, error) {
 	cfg, err := analyze.LoadConfig(o.root)
 	if err != nil {
 		return nil, err
 	}
 	in := &imported{rep: &model.Report{Root: o.root}, cfg: cfg}
+	var results []*dcm.Result
+	sarifs := 0
 	for _, src := range srcs {
-		data, err := readInput(src)
-		if err != nil {
-			return nil, err
-		}
-		findings, err := decodeSARIF(data, o, cfg)
+		findings, res, err := decodeOne(src, o, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", src, err)
 		}
+		if res != nil {
+			results = append(results, res)
+			continue
+		}
 		in.rep.Findings = append(in.rep.Findings, findings...)
+		sarifs++
 	}
+	in.addDCM(results)
 	if len(srcs) > 1 {
-		fmt.Fprintf(os.Stderr, "merged %d SARIF files\n", len(srcs))
+		fmt.Fprintf(os.Stderr, "merged %d %s\n", len(srcs), noun(sarifs, len(srcs)))
 	}
-	in.rep.Summarise(0) // file count is unknown from SARIF alone
+	in.rep.Summarise(in.files)
 	in.rep.Commit = o.commit
 	if in.rep.Commit == "" {
 		in.rep.Commit = gitCommit(o.root)
 	}
 	return in, nil
+}
+
+// decodeOne sniffs one document. DCM results are returned whole; SARIF yields findings only.
+func decodeOne(src string, o importOpts, cfg verdict.Config) ([]model.Finding, *dcm.Result, error) {
+	data, err := readInput(src)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch pickFormat(o.format, data) {
+	case "dcm":
+		res, err := decodeDCM(data, o, cfg)
+		return nil, res, err
+	case "sarif":
+		findings, err := decodeSARIF(data, o, cfg)
+		return findings, nil, err
+	}
+	return nil, nil, fmt.Errorf("unknown --format %q (want auto|sarif|dcm)", o.format)
+}
+
+// addDCM merges the DCM results into the report.
+func (in *imported) addDCM(rs []*dcm.Result) {
+	if len(rs) == 0 {
+		return
+	}
+	res := dcm.Merge(rs...)
+	in.rep.Funcs = res.Functions
+	in.measures, in.dcm, in.files = res.Measures, res, res.Files
+}
+
+// noun says what was merged, in the words the SARIF path always used.
+func noun(sarifs, total int) string {
+	if sarifs == total {
+		return "SARIF files"
+	}
+	return "reports"
+}
+
+func decodeDCM(data []byte, o importOpts, cfg verdict.Config) (*dcm.Result, error) {
+	res, err := dcm.Import(bytes.NewReader(data),
+		dcm.Options{Root: o.root})
+	if err != nil {
+		return nil, err
+	}
+	if res.FormatVersion != dcm.Version {
+		fmt.Fprintf(os.Stderr, "note: DCM report is formatVersion %d; this importer was verified against %d\n",
+			res.FormatVersion, dcm.Version)
+	}
+	return res, nil
 }
 
 func decodeSARIF(data []byte, o importOpts, cfg verdict.Config) ([]model.Finding, error) {
@@ -834,7 +894,7 @@ func decodeSARIF(data []byte, o importOpts, cfg verdict.Config) ([]model.Finding
 	return findings, nil
 }
 
-// importReport prints findings by rule.
+// importReport prints findings by rule and, for DCM, how much was measured.
 func importReport(in *imported, asJSON bool) error {
 	if asJSON {
 		enc := json.NewEncoder(os.Stdout)
@@ -844,6 +904,10 @@ func importReport(in *imported, asJSON bool) error {
 	fmt.Printf("imported %d findings\n", len(in.rep.Findings))
 	for _, k := range sortedCountKeys(in.rep.Summary.FindingsByRule) {
 		fmt.Printf("  %-52s %d\n", k, in.rep.Summary.FindingsByRule[k])
+	}
+	if in.dcm != nil {
+		fmt.Printf("measured %d declarations in %d files, %d measures\n",
+			in.dcm.Funcs, in.dcm.Files, len(in.measures))
 	}
 	return nil
 }
@@ -875,11 +939,14 @@ func importCheck(in *imported, o importOpts) error {
 	if err != nil {
 		return fmt.Errorf("%w\n  run `ratchet import --mode baseline` first", err)
 	}
-	res := b.Check(in.rep, false)
+	res := b.Check(in.rep, o.strictCaps)
 	fmt.Printf("%d tolerated, %d new, %d fixed\n", res.Existing, len(res.New), len(res.Fixed))
 	if len(res.New) > 0 {
 		fmt.Printf("\nNEW findings (these fail the build):\n")
 		report.Findings(os.Stdout, res.New)
+	}
+	for _, cb := range res.CapBreak {
+		fmt.Printf("\ncap breach: %s\n", cb)
 	}
 	if res.Regressed() {
 		os.Exit(1)
@@ -887,12 +954,23 @@ func importCheck(in *imported, o importOpts) error {
 	return nil
 }
 
-// readInput reads a report from a file or stdin.
+// readInput reads the whole report so the format can be sniffed first.
 func readInput(src string) ([]byte, error) {
 	if src == "-" {
 		return io.ReadAll(os.Stdin)
 	}
 	return os.ReadFile(src)
+}
+
+// pickFormat honours an explicit --format and otherwise sniffs the document.
+func pickFormat(flagVal string, data []byte) string {
+	if flagVal != "auto" {
+		return flagVal
+	}
+	if dcm.Sniff(data) {
+		return "dcm"
+	}
+	return "sarif"
 }
 
 // applyConfigVerdicts gives imported findings the .quality.yaml treatment the native scan gets.
@@ -932,11 +1010,16 @@ func emitImported(in *imported, o importOpts) error {
 	return fmt.Errorf("unknown --emit %q (want measures|findings)", o.emit)
 }
 
-// emitMeasureRecords writes the findings counts as project-scope measures, so
-// an import yields the same findings.total series a scan does.
+// emitMeasureRecords writes the producer's measures, then the findings counts computed here.
 func emitMeasureRecords(in *imported, repo string, when time.Time) error {
 	enc := schema.NewEncoder(os.Stdout)
 	defer enc.Flush()
+	for _, m := range in.measures {
+		m.Repo, m.Commit, m.TS = repo, in.rep.Commit, when
+		if err := enc.Write(&m); err != nil {
+			return err
+		}
+	}
 	put := func(metric string, v float64) error {
 		return enc.Write(&schema.Measure{Repo: repo, Commit: in.rep.Commit, TS: when,
 			Scope: schema.ScopeProject, Metric: metric, Value: v})

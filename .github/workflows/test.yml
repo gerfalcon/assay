@@ -109,6 +109,14 @@ jobs:
           go run ./cmd/ratchet scan .
           go run ./cmd/ratchet check .
 
+      # The Dart path has no parser of its own: a real DCM report, checked in
+      # from a small synthetic package, must import identically and hold its
+      # baseline. If DCM's format drifts, this is where it shows.
+      - name: DCM importer holds its own baseline
+        run: |
+          go run ./cmd/ratchet import internal/dcm/testdata/demo/report.json --root internal/dcm/testdata/demo \
+            --mode check --strict-caps
+
       - name: Codebase obeys its own declared architecture
         run: go run ./cmd/plumb check .
 
