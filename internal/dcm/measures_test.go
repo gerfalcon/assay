@@ -8,7 +8,6 @@ import (
 )
 
 func TestMeasuresScopesNamesAndRollups(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, 0, Options{Root: setup(t, 0)})
 	if res.FormatVersion != Version {
 		t.Errorf("formatVersion = %d, want %d", res.FormatVersion, Version)
@@ -55,7 +54,6 @@ func TestMeasuresScopesNamesAndRollups(t *testing.T) {
 // Per-function records in the Go scan's shape are what give a Dart baseline
 // real caps and a `--json` report that reads like a native one.
 func TestFunctionsCarryGoShapedMetrics(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, 0, Options{Root: setup(t, 0)})
 	if len(res.Functions) != 2 {
 		t.Fatalf("functions = %+v, want Foo.add and Foo.sub", res.Functions)
@@ -72,7 +70,6 @@ func TestFunctionsCarryGoShapedMetrics(t *testing.T) {
 // Several reports, such as one per package, merge into one result whose
 // roll-ups cover the union rather than repeating once per report.
 func TestMergeRecomputesRollups(t *testing.T) {
-	skipUnlessImplemented(t)
 	other := strings.ReplaceAll(strings.ReplaceAll(report(0), "lib/a.dart", "lib/b.dart"), `"value":25`, `"value":9`)
 	b, err := Import(strings.NewReader(other), Options{})
 	if err != nil {

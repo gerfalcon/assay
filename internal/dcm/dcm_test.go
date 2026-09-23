@@ -3,7 +3,6 @@ package dcm
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -83,16 +82,6 @@ func imp(t *testing.T, off int, opt Options) *Result {
 	return res
 }
 
-// skipUnlessImplemented lets the spec land before the importer: these tests
-// describe the behaviour, and run for real once Import stops returning
-// ErrNotImplemented.
-func skipUnlessImplemented(t *testing.T) {
-	t.Helper()
-	if _, err := Import(strings.NewReader("{}"), Options{}); errors.Is(err, ErrNotImplemented) {
-		t.Skip("importer not implemented yet; the spec is what this change adds")
-	}
-}
-
 func measure(t *testing.T, res *Result, scope schema.Scope, path, metric string) float64 {
 	t.Helper()
 	for _, m := range res.Measures {
@@ -105,7 +94,6 @@ func measure(t *testing.T, res *Result, scope schema.Scope, path, metric string)
 }
 
 func TestSniffAndFormatVersion(t *testing.T) {
-	skipUnlessImplemented(t)
 	if !Sniff([]byte(report(0))) {
 		t.Error("a DCM report was not recognised")
 	}
@@ -126,7 +114,6 @@ func TestSniffAndFormatVersion(t *testing.T) {
 }
 
 func TestIssuesAsSingleObjectIsAccepted(t *testing.T) {
-	skipUnlessImplemented(t)
 	res, err := Import(strings.NewReader(`{"formatVersion":13,
 	  "metricResults":[{"path":"lib/x.dart","issues":{"id":"cyclomatic-complexity","location":{"startLine":2},"value":4,"declarationName":"f"}}]}`), Options{})
 	if err != nil {
@@ -144,7 +131,6 @@ var update = flag.Bool("update", false, "rewrite testdata/demo/golden.json from 
 // format moved or the mapping did, and both deserve a deliberate decision
 // rather than a silent `-update`.
 func TestRealReportGolden(t *testing.T) {
-	skipUnlessImplemented(t)
 	root := filepath.Join("testdata", "demo")
 	res, err := ImportFile(filepath.Join(root, "report.json"), Options{Root: root})
 	if err != nil {
