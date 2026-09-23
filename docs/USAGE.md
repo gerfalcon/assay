@@ -88,10 +88,22 @@ for us to maintain.
 # Go
 golangci-lint run --out-format sarif | ratchet import - --mode check
 
-# C# — Roslyn analyzers. `version=2.1` is not optional: Roslyn's ErrorLog
-# defaults to SARIF 1.0, which is a different document shape entirely.
-dotnet build -p:ErrorLog=roslyn.sarif,version=2.1
-ratchet import roslyn.sarif --root . --mode baseline
+# C# — Roslyn analyzers. Put the ErrorLog in Directory.Build.props, not on the
+# command line: a command-line property is a LITERAL, so $(MSBuildProjectName)
+# would end up as a filename with brackets in it.
+#
+#   <ErrorLog>$(MSBuildThisFileDirectory)artifacts/$(MSBuildProjectName).sarif%2cversion=2.1</ErrorLog>
+#
+# Then, and each of these fails silently if you skip it:
+#   %2c               a literal comma is eaten by MSBuild and you get SARIF 1.0,
+#                     which is a different document shape entirely
+#   per-project name  one shared path has each project overwrite the last
+#   --no-incremental  an up-to-date build runs no analyzers and writes no SARIF,
+#                     leaving the previous one in place to be imported again
+#   artifacts/*.sarif import MERGES several files; passing one gives you a
+#                     baseline covering one project and a green check over the rest
+dotnet build --no-incremental -p:AnalysisMode=All
+ratchet import artifacts/*.sarif --root . --mode baseline
 
 # Dart
 dart_code_linter analyze lib --reporter=json | your-shim | ratchet import -
@@ -385,7 +397,7 @@ same module — those are cohesion, not shotgun surgery.
 | many | `lizard` | MIT |
 | Python | `wily` (per-commit history built in) | Apache-2.0 |
 | Dart | `dart_code_linter` | MIT |
-| C# | Roslyn analyzers via `ErrorLog=*.sarif,version=2.1` | MIT |
+| C# | Roslyn analyzers via `ErrorLog=*.sarif%2cversion=2.1` | MIT |
 
 ### Duplication
 
@@ -545,15 +557,17 @@ which is the actual gap — nothing is checking anything.
     <AnalysisLevel>latest</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>Recommended</AnalysisMode>
-    <ErrorLog>$(MSBuildThisFileDirectory)artifacts/roslyn.sarif%2cversion=2.1</ErrorLog>
+    <!-- Per PROJECT. One shared filename has each project overwrite the last,
+         so a solution-wide baseline would cover only whichever built last. -->
+    <ErrorLog>$(MSBuildThisFileDirectory)artifacts/$(MSBuildProjectName).sarif%2cversion=2.1</ErrorLog>
   </PropertyGroup>
 </Project>
 ```
 
 ```sh
-dotnet build
-ratchet import artifacts/roslyn.sarif --root . --mode baseline
-ratchet import artifacts/roslyn.sarif --root . --mode check
+dotnet build --no-incremental          # analyzers do not run on an up-to-date build
+ratchet import artifacts/*.sarif --root . --mode baseline
+ratchet import artifacts/*.sarif --root . --mode check
 ```
 
 `%2cversion=2.1` is an escaped comma and is **required** — without it MSBuild

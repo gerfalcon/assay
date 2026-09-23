@@ -105,10 +105,27 @@ type Options struct {
 
 // Import reads SARIF and returns findings.
 func Import(r io.Reader, opt Options) ([]model.Finding, error) {
-	var d doc
-	if err := json.NewDecoder(r).Decode(&d); err != nil {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("read sarif: %w", err)
+	}
+
+	// THE VERSION IS CHECKED BEFORE THE FULL DECODE, not after. SARIF 1.0
+	// carries `message` as a string where 2.1 has an object, so decoding a 1.0
+	// document into these types fails with
+	//
+	//   json: cannot unmarshal string into Go struct field ... of type struct { Text string }
+	//
+	// which is a true statement about Go and no help at all to someone holding
+	// the output of a .NET build. A version probe first means the diagnosis
+	// comes out instead of the symptom.
+	var probe struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &probe); err != nil {
 		return nil, fmt.Errorf("parse sarif: %w", err)
 	}
+	d := doc{Version: probe.Version}
 
 	// REFUSE ANYTHING BUT 2.1.0. SARIF 1.0 nests results under a different
 	// shape entirely, so this decoder finds nothing in one and reports
@@ -122,9 +139,12 @@ func Import(r io.Reader, opt Options) ([]model.Finding, error) {
 	if v := strings.TrimSpace(d.Version); v != "" && !strings.HasPrefix(v, "2.") {
 		return nil, fmt.Errorf("sarif version %q is not supported — this reads 2.1.0.\n"+
 			"  If this came from a .NET build, Roslyn defaults to SARIF 1.0; ask for 2.1 with\n"+
-			"    dotnet build -p:ErrorLog=out.sarif,version=2.1", v)
+			"    dotnet build -p:ErrorLog=out.sarif%%2cversion=2.1   (%%2c, not a comma)", v)
 	}
 
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return nil, fmt.Errorf("parse sarif: %w", err)
+	}
 	if len(d.Runs) == 0 {
 		return nil, nil
 	}
