@@ -8,7 +8,6 @@ import (
 )
 
 func TestIdentitiesDcmRepeats(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, report, Options{})
 	want := map[string]float64{
 		"lib/a.dart:Box.value":        4, // getter
@@ -41,7 +40,6 @@ func TestIdentitiesDcmRepeats(t *testing.T) {
 }
 
 func TestRecordsOnlyForDeclarationsWithCyclomatic(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, report, Options{})
 	if len(res.Functions) != 8 || res.Funcs != 8 {
 		t.Fatalf("functions = %d / %d, want the 8 declarations DCM computed cyclomatic for", len(res.Functions), res.Funcs)
@@ -69,7 +67,6 @@ func TestRecordsOnlyForDeclarationsWithCyclomatic(t *testing.T) {
 }
 
 func TestMeasuresScopesAndNames(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, report, Options{})
 	if res.FormatVersion != Version {
 		t.Errorf("formatVersion = %d, want %d", res.FormatVersion, Version)
@@ -95,7 +92,6 @@ func TestMeasuresScopesAndNames(t *testing.T) {
 }
 
 func TestPrefixRebasesPaths(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, report, Options{Prefix: "packages/edge/"})
 	if v := measure(t, res, schema.ScopeFunction, "packages/edge/lib/a.dart:Box.work", "cyclomatic"); v != 3 {
 		t.Errorf("prefixed Box.work cyclomatic = %v, want 3", v)
@@ -106,7 +102,6 @@ func TestPrefixRebasesPaths(t *testing.T) {
 }
 
 func TestGeneratedFilesAreSkipped(t *testing.T) {
-	skipUnlessImplemented(t)
 	root := t.TempDir()
 	write(t, root, "lib/headed.dart", "// GENERATED CODE - DO NOT MODIFY BY HAND\nint f() => 1;\n")
 	one := func(file string) string {
@@ -131,7 +126,6 @@ func TestGeneratedFilesAreSkipped(t *testing.T) {
 }
 
 func TestMergeUnionsAndRefusesDisagreement(t *testing.T) {
-	skipUnlessImplemented(t)
 	a := imp(t, report, Options{})
 	same, err := Merge(a, imp(t, report, Options{}))
 	if err != nil {
@@ -162,7 +156,6 @@ func TestMergeUnionsAndRefusesDisagreement(t *testing.T) {
 // cyclomatic value. The Go scan says 0 for a flat function, so the measure says 0 too, but only when
 // the report measures nesting at all: an unconfigured metric is not a zero.
 func TestNestingIsZeroForRecordsTheReportLeftOut(t *testing.T) {
-	skipUnlessImplemented(t)
 	doc := `{"formatVersion":13,"metricResults":[{"path":"lib/a.dart","issues":[
 	 {"id":"cyclomatic-complexity","location":{"startLine":2,"endLine":4},"value":3,"declarationName":"a","declarationType":"function"},
 	 {"id":"maximum-nesting-level","location":{"startLine":2,"endLine":4},"value":1,"declarationName":"a","declarationType":"function"},

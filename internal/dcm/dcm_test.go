@@ -3,7 +3,6 @@ package dcm
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -54,14 +53,6 @@ func write(t *testing.T, root, rel, body string) {
 	}
 }
 
-// skipUnlessImplemented lets the spec land before the importer.
-func skipUnlessImplemented(t *testing.T) {
-	t.Helper()
-	if _, err := Import(strings.NewReader("{}"), Options{}); errors.Is(err, ErrNotImplemented) {
-		t.Skip("importer not implemented yet; the spec is what this change adds")
-	}
-}
-
 func imp(t *testing.T, doc string, opt Options) *Result {
 	t.Helper()
 	res, err := Import(strings.NewReader(doc), opt)
@@ -92,7 +83,6 @@ func measure(t *testing.T, res *Result, scope schema.Scope, path, metric string)
 }
 
 func TestSniffAndFormatVersion(t *testing.T) {
-	skipUnlessImplemented(t)
 	if !Sniff([]byte(report)) {
 		t.Error("a DCM report was not recognised")
 	}
@@ -116,7 +106,6 @@ func TestSniffAndFormatVersion(t *testing.T) {
 // DCM measures only what analysis_options.yaml configures, so a report with no metric values
 // is a missing config, not an empty repository; importing it would store zeros as if it were.
 func TestNoMetricValuesIsAnError(t *testing.T) {
-	skipUnlessImplemented(t)
 	for _, doc := range []string{
 		`{"formatVersion":13}`,
 		`{"formatVersion":13,"metricResults":[]}`,
@@ -131,7 +120,6 @@ func TestNoMetricValuesIsAnError(t *testing.T) {
 }
 
 func TestIssuesAsSingleObjectIsAccepted(t *testing.T) {
-	skipUnlessImplemented(t)
 	res := imp(t, `{"formatVersion":13,
 	  "metricResults":[{"path":"lib/x.dart","issues":{"id":"cyclomatic-complexity","location":{"startLine":2},"value":4,"declarationName":"f"}}]}`, Options{})
 	if v := measure(t, res, schema.ScopeFunction, "lib/x.dart:f", "cyclomatic"); v != 4 {
@@ -142,7 +130,6 @@ func TestIssuesAsSingleObjectIsAccepted(t *testing.T) {
 var update = flag.Bool("update", false, "rewrite testdata/demo/golden.json from the current importer output")
 
 func TestRealReportGolden(t *testing.T) {
-	skipUnlessImplemented(t)
 	root := filepath.Join("testdata", "demo")
 	res, err := ImportFile(filepath.Join(root, "report.json"), Options{Root: root})
 	if err != nil {

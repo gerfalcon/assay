@@ -79,7 +79,7 @@ usage:
   ratchet baseline [flags] [path]   record current state as tolerated
   ratchet check    [flags] [path]   exit non-zero only on regression
   ratchet history  [flags] [path]   metric series over git history
-  ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
+  ratchet import   [flags] <file>   ingest SARIF from any linter or DCM JSON for Dart, then baseline/check
   ratchet exceptions [path]         everything currently tolerated, and why
   ratchet learn <repo>...           derive candidate rules from codebases you trust
   ratchet rules                     list rules

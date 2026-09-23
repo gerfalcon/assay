@@ -650,6 +650,8 @@ func langOf(path string) string {
 	switch {
 	case strings.Contains(path, ".go:"), strings.HasSuffix(path, ".go"):
 		return "go"
+	case strings.Contains(path, ".dart:"), strings.HasSuffix(path, ".dart"):
+		return "dart"
 	}
 	return ""
 }
