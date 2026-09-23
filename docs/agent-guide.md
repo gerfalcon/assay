@@ -37,7 +37,8 @@ Ask the user these three things first. The answers change everything.
 | | path |
 |---|---|
 | Go | `ratchet scan` works natively. Start there. |
-| C#, Dart, TS, Python, anything | you need a SARIF producer first — see "Other languages" |
+| Dart / Flutter | DCM's JSON read directly, or `dart_code_linter` via a SARIF shim — see "Dart and Flutter" |
+| C#, TS, Python, anything | you need a SARIF producer first — see "Other languages" |
 
 **2. What do they actually want?**
 
@@ -154,7 +155,24 @@ SARIF 2.1 rather than 1.0. Without it the import will be wrong.
 Do **not** set `TreatWarningsAsErrors` as well. The ratchet is the gate; two
 gates fighting each other is how people end up disabling both.
 
-### Dart
+### Dart and Flutter
+
+Use [DCM](https://dcm.dev). It is commercial — the CI key is a Teams feature —
+and it does not resolve dependencies, so `pub get` comes first.
+
+```sh
+dcm run --analyze --metrics --unused-code --report-all --no-fatal-found \
+        --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --root . --mode baseline
+ratchet import dcm.json --root . --mode check
+```
+
+`ratchet import` reads DCM's JSON directly; there is no converter to own. Two
+things to say out loud: `--report-all`, or the metrics are only the breaches;
+and `--no-fatal-found`, or DCM fails the build before the ratchet gets a say.
+Do not commit DCM's own `dcm_baseline.json` alongside — one gate, not two.
+
+Without a DCM licence, the open-source `dart_code_linter` still works:
 
 ```yaml
 # pubspec.yaml
@@ -164,7 +182,7 @@ dev_dependencies:
 
 ```sh
 dart run dart_code_linter:metrics analyze lib --reporter=json > dcl.json
-# dart_code_linter has no SARIF reporter; convert its JSON, then:
+# no SARIF reporter; convert its JSON, then:
 ratchet import dcl.sarif --root . --mode check
 ```
 

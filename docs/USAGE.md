@@ -105,8 +105,12 @@ golangci-lint run --out-format sarif | ratchet import - --mode check
 dotnet build --no-incremental -p:AnalysisMode=All
 ratchet import artifacts/*.sarif --root . --mode baseline
 
-# Dart
+# Dart — dart_code_linter (open source): its JSON needs a small shim to SARIF
 dart_code_linter analyze lib --reporter=json | your-shim | ratchet import -
+
+# Dart / Flutter — DCM (commercial): ratchet reads its JSON directly
+dcm run --analyze --metrics --unused-code --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --root . --mode check
 
 # Anything semgrep covers
 semgrep --config rules/ --sarif | ratchet import - --mode check
@@ -401,6 +405,7 @@ same module — those are cohesion, not shotgun surgery.
 | many | `lizard` | MIT |
 | Python | `wily` (per-commit history built in) | Apache-2.0 |
 | Dart | `dart_code_linter` | MIT |
+| Dart / Flutter | DCM, read natively by `ratchet import` | commercial, free tier |
 | C# | Roslyn analyzers via `ErrorLog=*.sarif%2cversion=2.1` | MIT |
 
 ### Duplication
@@ -603,7 +608,7 @@ golangci-lint run --out-format sarif | ratchet import - --mode check
 
 Use alongside `ratchet scan`, not instead of it — different rules, no overlap.
 
-### Dart
+### Dart — dart_code_linter
 
 ```yaml
 dev_dependencies:
@@ -619,7 +624,7 @@ No SARIF reporter, so you own a small converter (~40 lines mapping
 
 ### Dart and Flutter — DCM
 
-[DCM](https://dcm.dev) is the analyser: lint rules, unused code and files,
+[DCM](https://dcm.dev) is the commercial successor of the tool above, and the analyser: lint rules, unused code and files,
 duplication, and the metrics Flutter teams care about, such as widget nesting
 and widgets used per build method. It has no SARIF reporter, and SARIF would
 drop the metrics anyway, so `ratchet import` reads DCM's own JSON. The format is
@@ -655,6 +660,23 @@ reading their findings:
 dcm init metrics-preview --format=analysis_options lib   # every metric, with thresholds
 dcm init lints-preview   --format=analysis_options lib   # every rule that fires, with counts
 ```
+
+**What each DCM plan gives you.** DCM is commercial, and the plan decides
+which `dcm run` flags produce anything. The importer does not care: a section
+your plan does not emit simply imports nothing. As of late 2026, per
+[dcm.dev/pricing](https://dcm.dev/pricing/):
+
+| plan | what it adds for this pipeline |
+|---|---|
+| Free — one seat, no account or card | `--analyze` with a fixed set of ~100 rules and no line cap; `--metrics` with 22 metrics, capped at 50k analysed lines; `--unused-files`, `--unused-l10n`, `--exports-completeness`. No rule configuration, no presets, no CI key. |
+| Pro — per seat | the full rule set with configuration and presets, `--unused-code`, `--code-duplication`, widgets and assets analysis |
+| Teams and up | unlimited lines, dashboards, and the `--ci-key` that running the gate in CI requires |
+
+Two operational details that cost us an afternoon: the Free plan still needs
+`dcm activate --license-key=…`, and an expired paid licence left on a machine
+blocks every command, free ones included, until another key is activated.
+Drop the flags your plan does not cover; the free plan gives you the gate and
+the trend, which is most of the value.
 
 Rule IDs are namespaced `dcm:<rule>`; unused code is `dcm:unused-code:<kind>`,
 so a ticket cohort reads "remove 40 unused methods" rather than "unused code".

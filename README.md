@@ -41,7 +41,7 @@ renamed without breaking a build.
 
 | | |
 |---|---|
-| **`ratchet`** | the gate. `scan`, `baseline`, `check`, `import` (SARIF from any linter), `history`, `exceptions`, `learn` |
+| **`ratchet`** | the gate. `scan`, `baseline`, `check`, `import` (SARIF from any linter, DCM for Dart), `history`, `exceptions`, `learn` |
 | **`strata`** | append-only history. `append`, `query`, `rollup`, `verdicts`, `stat`, `precision`, `export`, `verify`, `promote-check` |
 | **`lens`** | read a stream at a glance. `top`, `trend`, `diff`, `compare`, `calibrate` |
 | **`docket`** | turn findings into tickets. `plan`, `create`, `sync`, `status` |
