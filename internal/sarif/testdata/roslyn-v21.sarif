@@ -1,0 +1,2645 @@
+{
+ "$schema": "http://json.schemastore.org/sarif-2.1.0",
+ "version": "2.1.0",
+ "runs": [
+  {
+   "results": [
+    {
+     "ruleId": "CA1707",
+     "ruleIndex": 79,
+     "level": "warning",
+     "message": {
+      "text": "Remove the underscores from member name Domain.Entities.CampaignAppliesTo.CHEAPEST_PRODUCTS"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "file:///src/src/Domain/Entities/CartCampaign.cs"
+        },
+        "region": {
+         "startLine": 62,
+         "startColumn": 5,
+         "endLine": 62,
+         "endColumn": 22
+        }
+       }
+      }
+     ],
+     "properties": {
+      "warningLevel": 1
+     }
+    },
+    {
+     "ruleId": "CA1707",
+     "ruleIndex": 79,
+     "level": "warning",
+     "message": {
+      "text": "Remove the underscores from member name Domain.Entities.CampaignAppliesTo.DELIVERY_FEE"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "file:///src/src/Domain/Entities/CartCampaign.cs"
+        },
+        "region": {
+         "startLine": 65,
+         "startColumn": 5,
+         "endLine": 65,
+         "endColumn": 17
+        }
+       }
+      }
+     ],
+     "properties": {
+      "warningLevel": 1
+     }
+    }
+   ],
+   "properties": {
+    "analyzerExecutionTime": "0.151"
+   },
+   "tool": {
+    "driver": {
+     "name": "Microsoft (R) Visual C# Compiler",
+     "version": "5.9.0-1.26423.113 (e34a38d2ae1fc26406a317517196e55c68ff83ab)",
+     "dottedQuadFileVersion": "5.9.0.0",
+     "semanticVersion": "5.9.0",
+     "language": "en-US",
+     "rules": [
+      {
+       "id": "CA1707",
+       "shortDescription": {
+        "text": "Identifiers should not contain underscores"
+       },
+       "fullDescription": {
+        "text": "By convention, identifier names do not contain the underscore (_) character. This rule checks namespaces, types, members, and parameters."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1707",
+       "properties": {
+        "category": "Naming",
+        "executionTimeInSeconds": "0.002",
+        "executionTimeInPercentage": "1",
+        "tags": [
+         "PortedFromFxCop",
+         "Telemetry",
+         "EnabledRuleInAggressiveMode"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "invocations": [
+    {
+     "executionSuccessful": true,
+     "ruleConfigurationOverrides": [
+      {
+       "descriptor": {
+        "id": "CA1000",
+        "index": 0
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1001",
+        "index": 1
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1002",
+        "index": 2
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1003",
+        "index": 3
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1008",
+        "index": 5
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1010",
+        "index": 6
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1012",
+        "index": 7
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1016",
+        "index": 9
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1018",
+        "index": 11
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1019",
+        "index": 12
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1024",
+        "index": 14
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1027",
+        "index": 15
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1028",
+        "index": 16
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1030",
+        "index": 17
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1031",
+        "index": 18
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1032",
+        "index": 19
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1033",
+        "index": 20
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1034",
+        "index": 21
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1036",
+        "index": 22
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1040",
+        "index": 23
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1041",
+        "index": 24
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1043",
+        "index": 25
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1044",
+        "index": 26
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1046",
+        "index": 28
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1050",
+        "index": 29
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1051",
+        "index": 30
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1052",
+        "index": 31
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1054",
+        "index": 32
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1055",
+        "index": 33
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1056",
+        "index": 34
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1058",
+        "index": 35
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1061",
+        "index": 37
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1062",
+        "index": 38
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1063",
+        "index": 39
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1064",
+        "index": 40
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1065",
+        "index": 41
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1066",
+        "index": 42
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1067",
+        "index": 43
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1068",
+        "index": 44
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1069",
+        "index": 45
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1070",
+        "index": 46
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1200",
+        "index": 47
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1303",
+        "index": 48
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1304",
+        "index": 49
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1305",
+        "index": 50
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1307",
+        "index": 51
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1308",
+        "index": 52
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1309",
+        "index": 53
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1310",
+        "index": 54
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1311",
+        "index": 55
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1401",
+        "index": 56
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1419",
+        "index": 60
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1421",
+        "index": 62
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1507",
+        "index": 68
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1508",
+        "index": 69
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1510",
+        "index": 71
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1511",
+        "index": 72
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1512",
+        "index": 73
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1513",
+        "index": 74
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1514",
+        "index": 75
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1516",
+        "index": 77
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1700",
+        "index": 78
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1707",
+        "index": 79
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1708",
+        "index": 80
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1710",
+        "index": 81
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1711",
+        "index": 82
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1712",
+        "index": 83
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1713",
+        "index": 84
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1715",
+        "index": 85
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1716",
+        "index": 86
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1720",
+        "index": 87
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1721",
+        "index": 88
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1724",
+        "index": 89
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1725",
+        "index": 90
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1727",
+        "index": 91
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1802",
+        "index": 92
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1805",
+        "index": 93
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1806",
+        "index": 94
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1810",
+        "index": 95
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1812",
+        "index": 96
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1813",
+        "index": 97
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1814",
+        "index": 98
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1815",
+        "index": 99
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1816",
+        "index": 100
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1819",
+        "index": 101
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1820",
+        "index": 102
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1821",
+        "index": 103
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1822",
+        "index": 104
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1823",
+        "index": 105
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1824",
+        "index": 106
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1825",
+        "index": 107
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1826",
+        "index": 108
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1827",
+        "index": 109
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1828",
+        "index": 110
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1829",
+        "index": 111
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1830",
+        "index": 112
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1832",
+        "index": 114
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1833",
+        "index": 115
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1834",
+        "index": 116
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1835",
+        "index": 117
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1836",
+        "index": 118
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1837",
+        "index": 119
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1838",
+        "index": 120
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1839",
+        "index": 121
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1840",
+        "index": 122
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1841",
+        "index": 123
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1842",
+        "index": 124
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1843",
+        "index": 125
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1844",
+        "index": 126
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1845",
+        "index": 127
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1846",
+        "index": 128
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1847",
+        "index": 129
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1848",
+        "index": 130
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1849",
+        "index": 131
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1850",
+        "index": 132
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1851",
+        "index": 133
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1852",
+        "index": 134
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1853",
+        "index": 135
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1854",
+        "index": 136
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1855",
+        "index": 137
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1856",
+        "index": 138
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1858",
+        "index": 140
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1859",
+        "index": 141
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1860",
+        "index": 142
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1861",
+        "index": 143
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1862",
+        "index": 144
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1863",
+        "index": 145
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1864",
+        "index": 146
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1865",
+        "index": 147
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1866",
+        "index": 148
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1867",
+        "index": 149
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1868",
+        "index": 150
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1869",
+        "index": 151
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1870",
+        "index": 152
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1871",
+        "index": 153
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1872",
+        "index": 154
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1873",
+        "index": 155
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1874",
+        "index": 156
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA1875",
+        "index": 157
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2000",
+        "index": 158
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2002",
+        "index": 159
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2007",
+        "index": 160
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2008",
+        "index": 161
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2009",
+        "index": 162
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2011",
+        "index": 163
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2012",
+        "index": 164
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2016",
+        "index": 168
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2019",
+        "index": 171
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2020",
+        "index": 172
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2022",
+        "index": 174
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2023",
+        "index": 175
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2024",
+        "index": 176
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2100",
+        "index": 178
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2101",
+        "index": 179
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2119",
+        "index": 180
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2153",
+        "index": 181
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2201",
+        "index": 183
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2207",
+        "index": 184
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2208",
+        "index": 185
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2211",
+        "index": 186
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2213",
+        "index": 187
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2214",
+        "index": 188
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2215",
+        "index": 189
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2216",
+        "index": 190
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2217",
+        "index": 191
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2219",
+        "index": 192
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2225",
+        "index": 193
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2226",
+        "index": 194
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2227",
+        "index": 195
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2231",
+        "index": 196
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2234",
+        "index": 197
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2235",
+        "index": 198
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2237",
+        "index": 199
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2241",
+        "index": 200
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2242",
+        "index": 201
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2243",
+        "index": 202
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2244",
+        "index": 203
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2245",
+        "index": 204
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2246",
+        "index": 205
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2248",
+        "index": 207
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2249",
+        "index": 208
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2250",
+        "index": 209
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2251",
+        "index": 210
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2252",
+        "index": 211
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2253",
+        "index": 212
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2254",
+        "index": 213
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2262",
+        "index": 221
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2263",
+        "index": 222
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2264",
+        "index": 223
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2265",
+        "index": 224
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2266",
+        "index": 225
+       },
+       "configuration": {
+        "enabled": false
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2300",
+        "index": 226
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2301",
+        "index": 227
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2302",
+        "index": 228
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2305",
+        "index": 229
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2310",
+        "index": 230
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2311",
+        "index": 231
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2312",
+        "index": 232
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2315",
+        "index": 233
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2321",
+        "index": 234
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2322",
+        "index": 235
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2326",
+        "index": 236
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2327",
+        "index": 237
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2328",
+        "index": 238
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2329",
+        "index": 239
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2330",
+        "index": 240
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2350",
+        "index": 241
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2351",
+        "index": 242
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2352",
+        "index": 243
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2353",
+        "index": 244
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2354",
+        "index": 245
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2355",
+        "index": 246
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2356",
+        "index": 247
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2361",
+        "index": 248
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA2362",
+        "index": 249
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3001",
+        "index": 250
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3002",
+        "index": 251
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3003",
+        "index": 252
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3004",
+        "index": 253
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3005",
+        "index": 254
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3006",
+        "index": 255
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3007",
+        "index": 256
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3008",
+        "index": 257
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3009",
+        "index": 258
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3010",
+        "index": 259
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3011",
+        "index": 260
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3012",
+        "index": 261
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3061",
+        "index": 262
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3075",
+        "index": 263
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3076",
+        "index": 264
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3077",
+        "index": 265
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA3147",
+        "index": 266
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5350",
+        "index": 267
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5351",
+        "index": 268
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5358",
+        "index": 269
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5359",
+        "index": 270
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5360",
+        "index": 271
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5361",
+        "index": 272
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5362",
+        "index": 273
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5363",
+        "index": 274
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5364",
+        "index": 275
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5365",
+        "index": 276
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5366",
+        "index": 277
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5367",
+        "index": 278
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5368",
+        "index": 279
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5369",
+        "index": 280
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5370",
+        "index": 281
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5371",
+        "index": 282
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5372",
+        "index": 283
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5373",
+        "index": 284
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5374",
+        "index": 285
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5375",
+        "index": 286
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5376",
+        "index": 287
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5377",
+        "index": 288
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5378",
+        "index": 289
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5379",
+        "index": 290
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5380",
+        "index": 291
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5381",
+        "index": 292
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5382",
+        "index": 293
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5383",
+        "index": 294
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5384",
+        "index": 295
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5385",
+        "index": 296
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5386",
+        "index": 297
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5387",
+        "index": 298
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5388",
+        "index": 299
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5389",
+        "index": 300
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5390",
+        "index": 301
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5391",
+        "index": 302
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5392",
+        "index": 303
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5393",
+        "index": 304
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5394",
+        "index": 305
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5395",
+        "index": 306
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5396",
+        "index": 307
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5397",
+        "index": 308
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5398",
+        "index": 309
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5399",
+        "index": 310
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5400",
+        "index": 311
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5401",
+        "index": 312
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5402",
+        "index": 313
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5403",
+        "index": 314
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5404",
+        "index": 315
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      },
+      {
+       "descriptor": {
+        "id": "CA5405",
+        "index": 316
+       },
+       "configuration": {
+        "level": "warning"
+       }
+      }
+     ]
+    }
+   ],
+   "columnKind": "utf16CodeUnits"
+  }
+ ]
+}

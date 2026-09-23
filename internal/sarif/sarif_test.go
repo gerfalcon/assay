@@ -175,3 +175,74 @@ func TestEmptyAndMalformed(t *testing.T) {
 		t.Error("malformed SARIF should error, not silently produce nothing")
 	}
 }
+
+// REGRESSION. SARIF 1.0 nests results under a different shape, so this decoder
+// found nothing in one and reported "imported 0 findings" — a clean bill of
+// health for a file it could not read.
+//
+// Roslyn's `-p:ErrorLog=out.sarif` emits 1.0 BY DEFAULT, so the obvious way to
+// get diagnostics out of a .NET build produced exactly the file that was
+// silently swallowed. Getting 2.1 requires `ErrorLog=out.sarif,version=2.1`.
+func TestUnsupportedSarifVersionIsRefused(t *testing.T) {
+	v1 := `{"version":"1.0.0","runs":[{"results":[{"ruleId":"CA1822"}]}]}`
+	_, err := Import(strings.NewReader(v1), Options{})
+	if err == nil {
+		t.Fatal("SARIF 1.0 was accepted; it decodes to zero findings and reads as a clean scan")
+	}
+	for _, want := range []string{"1.0.0", "2.1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error should mention %q so the fix is obvious: %v", want, err)
+		}
+	}
+
+	// 2.1.0 still works, and a producer that omits the version is not rejected
+	// — plenty of tools emit conforming documents without stating it.
+	ok := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"T"}},"results":[` +
+		`{"ruleId":"R","message":{"text":"m"},"locations":[{"physicalLocation":` +
+		`{"artifactLocation":{"uri":"a.cs"},"region":{"startLine":1}}}]}]}]}`
+	if f, err := Import(strings.NewReader(ok), Options{}); err != nil || len(f) != 1 {
+		t.Errorf("2.1.0: got %d findings, err %v", len(f), err)
+	}
+	noVer := strings.Replace(ok, `"version":"2.1.0",`, "", 1)
+	if _, err := Import(strings.NewReader(noVer), Options{}); err != nil {
+		t.Errorf("a document with no version field was rejected: %v", err)
+	}
+}
+
+// Fixtures captured from a REAL `dotnet build` on a .NET 8 service, one with
+// each ErrorLog spelling. Written from the spec these tests passed while the
+// product was broken; written from the output they pin what Roslyn actually
+// emits.
+func TestRealRoslynOutput(t *testing.T) {
+	t.Run("2.1 imports", func(t *testing.T) {
+		f, err := ImportFile("testdata/roslyn-v21.sarif", Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f) != 2 {
+			t.Fatalf("got %d findings, want 2", len(f))
+		}
+		if f[0].Rule == "" || f[0].File == "" || f[0].Line == 0 || f[0].Message == "" {
+			t.Errorf("finding is missing a field a person needs: %+v", f[0])
+		}
+	})
+
+	// The version probe has to run BEFORE the full decode. SARIF 1.0 carries
+	// `message` as a string where 2.1 has an object, so decoding first fails
+	// with "cannot unmarshal string into Go struct field ... Text string" —
+	// true about Go, useless to someone holding a build log.
+	t.Run("1.0 is diagnosed, not type-errored", func(t *testing.T) {
+		_, err := ImportFile("testdata/roslyn-v1.sarif", Options{})
+		if err == nil {
+			t.Fatal("real Roslyn 1.0 output was accepted")
+		}
+		if strings.Contains(err.Error(), "unmarshal") {
+			t.Errorf("leaked a Go decoding error instead of the diagnosis: %v", err)
+		}
+		for _, want := range []string{"1.0.0", "%2c"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("error should mention %q: %v", want, err)
+			}
+		}
+	})
+}

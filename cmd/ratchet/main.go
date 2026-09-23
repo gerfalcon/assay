@@ -748,20 +748,37 @@ func cmdImport(args []string) error {
 	includeSuppressed := fs.Bool("include-suppressed", false, "import results the producer marked suppressed")
 	force := fs.Bool("force", false, "overwrite an existing baseline (mode=baseline)")
 	asJSON := fs.Bool("json", false, "emit JSON")
-	src := parseArgs(fs, args)
-	if src == "." {
-		return fmt.Errorf("usage: ratchet import [flags] <file.sarif>\n  pipe with: golangci-lint run --out-format sarif | ratchet import -")
+	srcs := parseArgsMulti(fs, args)
+	if len(srcs) == 0 {
+		return fmt.Errorf("usage: ratchet import [flags] <file.sarif>...\n" +
+			"  several files are merged, which is what a multi-project build produces:\n" +
+			"    ratchet import artifacts/*.sarif --mode baseline\n" +
+			"  pipe with: golangci-lint run --out-format sarif | ratchet import -")
 	}
 
+	// MERGE, do not take the first. A .NET solution writes one SARIF per
+	// project — a single shared ErrorLog path would have each project
+	// overwrite the last — so importing one file at a time is how you end up
+	// with a baseline covering a tenth of the codebase and a green check.
 	var (
 		findings []model.Finding
 		err      error
 	)
 	opt := sarif.Options{Root: *root, ToolPrefix: *tool, IncludeSuppressed: *includeSuppressed}
-	if src == "-" {
-		findings, err = sarif.Import(os.Stdin, opt)
-	} else {
-		findings, err = sarif.ImportFile(src, opt)
+	for _, src := range srcs {
+		var batch []model.Finding
+		if src == "-" {
+			batch, err = sarif.Import(os.Stdin, opt)
+		} else {
+			batch, err = sarif.ImportFile(src, opt)
+		}
+		if err != nil {
+			return fmt.Errorf("%s: %w", src, err)
+		}
+		findings = append(findings, batch...)
+	}
+	if len(srcs) > 1 {
+		fmt.Fprintf(os.Stderr, "merged %d SARIF files\n", len(srcs))
 	}
 	if err != nil {
 		return err

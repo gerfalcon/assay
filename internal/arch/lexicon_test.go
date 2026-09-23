@@ -250,20 +250,28 @@ func TestPublicSurfaceOnlyAcrossLanguages(t *testing.T) {
 // real run drafted utils, client and web_utils alongside genuine domains.
 func TestUtilityPackagesAreMarkedNotAContext(t *testing.T) {
 	for _, layer := range []string{
-		"pkg/utils", "pkg/util", "pkg/client", "pkg/web_utils", "internal/common",
-		"src/Shared", "lib", "app/core", "pkg/helpers", "infra",
+		"pkg/utils", "pkg/util", "pkg/web_utils", "internal/common",
+		"src/Shared", "lib", "pkg/helpers", "tools/playground", "tools/ci_detect",
+		"scripts/nfi",
 	} {
 		if !NotAContext(layer) {
 			t.Errorf("NotAContext(%q) = false, want true — a utility package owns no vocabulary", layer)
 		}
 	}
 	// Real domains must not be swept up, or the marker becomes noise itself.
+	//
+	// The last four are DELIBERATE exclusions, each learned from a real
+	// codebase: `Infrastructure` and `core` are named layers in clean and
+	// hexagonal architectures, a `client` package can be a genuine upstream
+	// adapter, and `internal` is Go's standard directory for non-exported
+	// packages — so every internal/billing in every Go service would be marked.
 	for _, layer := range []string{
 		"internal/cart", "internal/rating", "pkg/kafka", "internal/order-api",
 		"src/Billing", "internal/compliance-worker", "pkg/monitoring",
+		"src/Infrastructure", "app/core", "pkg/client", "internal/billing",
 	} {
 		if NotAContext(layer) {
-			t.Errorf("NotAContext(%q) = true, want false — that is a real domain", layer)
+			t.Errorf("NotAContext(%q) = true, want false — that is a real domain or layer", layer)
 		}
 	}
 }

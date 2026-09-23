@@ -860,3 +860,54 @@ func TestRulesFlagNarrowsTheScan(t *testing.T) {
 		}
 	}
 }
+
+// REGRESSION. `ratchet import a.sarif b.sarif` used to take the first file and
+// discard the rest with no diagnostic.
+//
+// That is not a corner case for C#: a .NET solution writes one SARIF per
+// project, because a single shared ErrorLog path has each project overwrite the
+// last. Importing one file at a time gives you a baseline covering a fraction
+// of the codebase and a green check over the rest.
+func TestImportMergesSeveralSarifFiles(t *testing.T) {
+	bin := ratchet(t)
+	dir := t.TempDir()
+
+	one := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Roslyn"}},"results":[
+      {"ruleId":"CA1001","level":"warning","message":{"text":"a"},"locations":[{"physicalLocation":
+      {"artifactLocation":{"uri":"P1/A.cs"},"region":{"startLine":3}}}]}]}]}`
+	two := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Roslyn"}},"results":[
+      {"ruleId":"CA2000","level":"warning","message":{"text":"b"},"locations":[{"physicalLocation":
+      {"artifactLocation":{"uri":"P2/B.cs"},"region":{"startLine":7}}}]},
+      {"ruleId":"CA2001","level":"warning","message":{"text":"c"},"locations":[{"physicalLocation":
+      {"artifactLocation":{"uri":"P2/C.cs"},"region":{"startLine":9}}}]}]}]}`
+	cmdtest.WriteFile(t, dir, "p1.sarif", one)
+	cmdtest.WriteFile(t, dir, "p2.sarif", two)
+
+	r := bin.Run(t, dir, "import", "p1.sarif", "p2.sarif", "--mode", "report").MustPass(t)
+	r.MustSay(t, "merged 2 SARIF files", "imported 3 findings", "CA1001", "CA2000", "CA2001")
+
+	// And the baseline must cover all of them, or the gate protects one project.
+	bin.Run(t, dir, "import", "p1.sarif", "p2.sarif", "--mode", "baseline",
+		"--file", "b.json", "--force").MustPass(t).MustSay(t, "3 tolerated")
+	bin.Run(t, dir, "import", "p1.sarif", "p2.sarif", "--mode", "check",
+		"--file", "b.json").MustPass(t).MustSay(t, "3 tolerated, 0 new")
+}
+
+// A solution build analyses a shared project once per referencing .csproj, so
+// the same diagnostic arrives in several SARIF files. The baseline is keyed by
+// fingerprint, so it must collapse them — otherwise the tolerated count grows
+// with the number of projects that happen to reference a library.
+func TestMergedDuplicatesCollapseInTheBaseline(t *testing.T) {
+	bin := ratchet(t)
+	dir := t.TempDir()
+	same := `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Roslyn"}},"results":[
+      {"ruleId":"CA1001","level":"warning","message":{"text":"a"},"locations":[{"physicalLocation":
+      {"artifactLocation":{"uri":"Shared/A.cs"},"region":{"startLine":3}}}]}]}]}`
+	cmdtest.WriteFile(t, dir, "a.sarif", same)
+	cmdtest.WriteFile(t, dir, "b.sarif", same)
+
+	bin.Run(t, dir, "import", "a.sarif", "b.sarif", "--mode", "baseline",
+		"--file", "b.json", "--force").MustPass(t).MustSay(t, "1 tolerated")
+	bin.Run(t, dir, "import", "a.sarif", "b.sarif", "--mode", "check",
+		"--file", "b.json").MustPass(t).MustSay(t, "0 new")
+}
