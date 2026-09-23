@@ -1,6 +1,475 @@
 {
  "Files": 3,
  "Funcs": 9,
+ "Findings": [
+  {
+   "rule": "dcm:unused-files",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 0,
+   "col": 0,
+   "message": "Unused file",
+   "fingerprint": "3256e67159cd1cdf"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 1,
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "5e30b93b324d07a8"
+  },
+  {
+   "rule": "dcm:avoid-global-state",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 9,
+   "message": "Avoid global variables without the 'const' or 'final' keyword. Try removing it or making immutable.",
+   "fingerprint": "456dcedf7c39f72f"
+  },
+  {
+   "rule": "dcm:unused-code:top-level-variable",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 1,
+   "func": "globalScratch",
+   "message": "Unused top level variable 'globalScratch'",
+   "fingerprint": "84128d60307fb229"
+  },
+  {
+   "rule": "dcm:unused-code:class",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 7,
+   "col": 1,
+   "func": "Cart",
+   "message": "Unused class 'Cart'",
+   "fingerprint": "f7310738a2b3e6e4"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 9,
+   "col": 3,
+   "func": "Cart",
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "330d02a3daa08bf4",
+   "verdict": "false-positive",
+   "verdictReason": "the bag is genuinely heterogeneous by design",
+   "verdictSource": "comment"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 9,
+   "col": 3,
+   "func": "bag",
+   "message": "Unused field 'bag'",
+   "fingerprint": "687654d76529a147",
+   "verdict": "false-positive",
+   "verdictReason": "the bag is genuinely heterogeneous by design",
+   "verdictSource": "comment"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 10,
+   "col": 3,
+   "func": "Cart",
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "98f2dff2ce9e56da"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 10,
+   "col": 3,
+   "func": "extra",
+   "message": "Unused field 'extra'",
+   "fingerprint": "1ac88784ce51c3a3"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 11,
+   "col": 3,
+   "func": "prices",
+   "message": "Unused field 'prices'",
+   "fingerprint": "c3cf47ac0fd2f5b9"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 12,
+   "col": 3,
+   "func": "label",
+   "message": "The 'label' field is used but never assigned a value",
+   "fingerprint": "a8b4267a8d31f2f9"
+  },
+  {
+   "rule": "dcm:avoid-unused-parameters",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 45,
+   "func": "Cart.total",
+   "message": "Parameter is not used. Try removing it, renaming to _ or referencing it in code.",
+   "fingerprint": "0f911b1842950d05"
+  },
+  {
+   "rule": "dcm:code-duplication",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 3,
+   "func": "total",
+   "message": "This method has 1 duplicate declaration — also lib/cart.dart:47 (copyTotal)",
+   "fingerprint": "4fb3ab50d44461bd"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 3,
+   "func": "total",
+   "message": "Unused method 'total'",
+   "fingerprint": "b5de9e703d621fe8"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 18,
+   "col": 17,
+   "func": "Cart.total",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "5ff2c78e8a10a4ba"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 19,
+   "col": 22,
+   "func": "Cart.total",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "3877afcdefd8a2f2"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 31,
+   "col": 3,
+   "func": "discounted",
+   "message": "Unused method 'discounted'",
+   "fingerprint": "573c554d8100386a"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 32,
+   "col": 29,
+   "func": "Cart.discounted",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "443c45e054006197"
+  },
+  {
+   "rule": "dcm:prefer-immediate-return",
+   "severity": "info",
+   "file": "lib/cart.dart",
+   "line": 32,
+   "col": 5,
+   "func": "Cart.discounted",
+   "message": "Prefer returning the result immediately instead of declaring an intermediate variable right before the return statement.",
+   "fingerprint": "b136c54fa948bd30"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 36,
+   "col": 3,
+   "func": "addAll",
+   "message": "Unused method 'addAll'",
+   "fingerprint": "cf99a4352f7a8228"
+  },
+  {
+   "rule": "dcm:avoid-ignoring-return-values",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 37,
+   "col": 5,
+   "func": "Cart.addAll",
+   "message": "Avoid ignoring return values. Try assigning this invocation to a variable and referencing it in your code.",
+   "fingerprint": "ba5db7d884c69378"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 37,
+   "col": 26,
+   "func": "Cart.addAll",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "b04f583707ddbe17"
+  },
+  {
+   "rule": "dcm:no-empty-block",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 41,
+   "col": 16,
+   "func": "Cart.clear",
+   "message": "This block is empty. Try checking it for potentially missing code.",
+   "fingerprint": "bf66150155b09e22"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 41,
+   "col": 3,
+   "func": "clear",
+   "message": "Unused method 'clear'",
+   "fingerprint": "4de7880e152b3f14"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 43,
+   "col": 3,
+   "func": "shout",
+   "message": "Unused method 'shout'",
+   "fingerprint": "cc3cc8113a485342"
+  },
+  {
+   "rule": "dcm:avoid-non-null-assertion",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 44,
+   "col": 12,
+   "func": "Cart.shout",
+   "message": "Avoid non-null assertions. Try rewriting the code without it.",
+   "fingerprint": "df5f513887db07c0"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 44,
+   "col": 52,
+   "func": "Cart.shout",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "d97d1da2aaa1b2c5"
+  },
+  {
+   "rule": "dcm:avoid-unused-parameters",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 47,
+   "col": 49,
+   "func": "Cart.copyTotal",
+   "message": "Parameter is not used. Try removing it, renaming to _ or referencing it in code.",
+   "fingerprint": "50a597d0dc2640a0"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 47,
+   "col": 3,
+   "func": "copyTotal",
+   "message": "Unused method 'copyTotal'",
+   "fingerprint": "8bd28805d27bbede"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 51,
+   "col": 17,
+   "func": "Cart.copyTotal",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "c73122dca39b0122"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 52,
+   "col": 22,
+   "func": "Cart.copyTotal",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "0499258c4cff811b"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 64,
+   "col": 24,
+   "func": "Cart.neverCalled",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "0590929c764c51d6"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 64,
+   "col": 3,
+   "func": "neverCalled",
+   "message": "Unused method 'neverCalled'",
+   "fingerprint": "d1b4fe2c5c905fa7"
+  },
+  {
+   "rule": "dcm:unused-files",
+   "severity": "warn",
+   "file": "lib/legacy_helpers.dart",
+   "line": 0,
+   "col": 0,
+   "message": "Unused file",
+   "fingerprint": "0eacc98e8997dc34"
+  },
+  {
+   "rule": "dcm:unused-code:function",
+   "severity": "warn",
+   "file": "lib/legacy_helpers.dart",
+   "line": 2,
+   "col": 1,
+   "func": "legacyRound",
+   "message": "Unused function 'legacyRound'",
+   "fingerprint": "fcb7973394489fa2"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 2,
+   "col": 16,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "f8b79b2448cd2449",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 3,
+   "col": 36,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "c26ced6237f50f61",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 3,
+   "col": 30,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "8e86d88b52c1c0d6",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 5,
+   "col": 28,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "ea735948b1b8241d",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 5,
+   "col": 33,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "8a832247bbcde88b",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:prefer-match-file-name",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 8,
+   "col": 7,
+   "func": "TaxTable",
+   "message": "The first class name does not match the file name. Try renaming it.",
+   "fingerprint": "e2e41dfdc1b2d551"
+  },
+  {
+   "rule": "dcm:unused-code:class",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 8,
+   "col": 1,
+   "func": "TaxTable",
+   "message": "Unused class 'TaxTable'",
+   "fingerprint": "1f51fd181588ecfa"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 9,
+   "col": 3,
+   "func": "low",
+   "message": "Unused field 'low'",
+   "fingerprint": "e137130d3f49cd45"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 10,
+   "col": 3,
+   "func": "high",
+   "message": "Unused field 'high'",
+   "fingerprint": "45746310b29a6a51"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 11,
+   "col": 3,
+   "func": "unusedBand",
+   "message": "Unused field 'unusedBand'",
+   "fingerprint": "08d4cd47c15fcf47"
+  }
+ ],
  "Functions": [
   {
    "name": "Cart.total",

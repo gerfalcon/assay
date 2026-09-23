@@ -617,37 +617,69 @@ dart run dart_code_linter:metrics analyze lib --reporter=json > dcl.json
 No SARIF reporter, so you own a small converter (~40 lines mapping
 `records[].issues[]` to SARIF `results[]`). Add `lakos` for cycle detection.
 
-### Dart and Flutter — DCM metrics
+### Dart and Flutter — DCM
 
-[DCM](https://dcm.dev) is the analyser Flutter teams run, and its metrics are
-the reason: cyclomatic complexity, nesting, widget nesting and widgets per
-build method, class cohesion and coupling. It has no SARIF reporter, and SARIF
-would drop the metrics anyway, so `ratchet import` reads DCM's own JSON. The
-format is sniffed from the document; `--format dcm` forces it.
+[DCM](https://dcm.dev) is the analyser: lint rules, unused code and files,
+duplication, and the metrics Flutter teams care about, such as widget nesting
+and widgets used per build method. It has no SARIF reporter, and SARIF would
+drop the metrics anyway, so `ratchet import` reads DCM's own JSON. The format is
+sniffed from the document; `--format dcm` forces it.
 
 ```sh
 flutter pub get   # DCM does not resolve dependencies itself
-dcm run --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib
+dcm run --analyze --metrics --unused-code --report-all --no-fatal-found \
+        --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --root . --mode baseline   # once; commit the file
+ratchet import dcm.json --root . --mode check      # in CI; add --strict-caps to hold peak complexity too
+```
+
+The metrics also fill the per-function records, so `ratchet import dcm.json
+--json` reads like a native scan and the baseline records real caps for
+cyclomatic complexity and nesting. Cognitive complexity stays 0: DCM has no
+such metric.
+
+Two flags matter. `--report-all` makes DCM report every metric value rather
+than only threshold breaches; without it the distributions are meaningless.
+`--no-fatal-found` stops DCM failing the build by itself, so the ratchet is the
+one gate. Do not also commit DCM's own `dcm_baseline.json`: it hides tolerated
+issues from the JSON, and they resurface as "new" the moment their code is
+touched.
+
+DCM analyses only what `analysis_options.yaml` configures: with no `dcm:`
+block, `analyzeResults` and `metricResults` are silently empty, and the
+`--implicit-rules` shortcut only works together with `--upload`. Let DCM write
+the block from what it sees in your code, then prune the noisy rules after
+reading their findings:
+
+```sh
+dcm init metrics-preview --format=analysis_options lib   # every metric, with thresholds
+dcm init lints-preview   --format=analysis_options lib   # every rule that fires, with counts
+```
+
+Rule IDs are namespaced `dcm:<rule>`; unused code is `dcm:unused-code:<kind>`,
+so a ticket cohort reads "remove 40 unused methods" rather than "unused code".
+Findings are fingerprinted on the offending source span, never the line number,
+and identical instances in one function are numbered so the gate tracks their
+count. That means importing from the same checkout DCM analysed: the importer
+reads the spans from the source.
+`// quality:` markers on the line above a finding and `.quality.yaml` both work,
+and a judged finding still counts for the gate — the verdict is evidence for
+rule precision, not a bypass.
+
+For the history, emit measures under the same names the Go scan uses:
+
+```sh
 ratchet import dcm.json --emit measures --repo myapp | strata append
 lens top --store .assay --metric cyclomatic --n 10
 lens calibrate --store .assay --lang dart      # bands from your own corpus
 ```
 
-`--report-all` makes DCM report every metric value rather than only threshold
-breaches; without it the distributions are meaningless. `--no-fatal-found`
-stops DCM failing the build by itself. DCM analyses only what
-`analysis_options.yaml` configures: with no `dcm:` block, `metricResults` is
-silently empty; `dcm init metrics-preview --format=analysis_options lib` writes
-one.
-
-Measures use the Go scan's names, `cyclomatic`, `nesting`, `params`, `sloc`,
-plus DCM's own such as `widgets.nesting`, at function, file and `class` scope,
-with project roll-ups like `cyclomatic.p90`, so one `lens trend` query serves a
-Dart repo and a Go repo alike. The metrics also fill the per-function records,
-so `ratchet import dcm.json --json` reads like a native scan and `--mode check
---strict-caps` holds peak cyclomatic complexity and nesting. Cognitive
-complexity stays 0: DCM has no such metric. Several reports, such as one per
-package of a monorepo, merge into one import.
+DCM has no cognitive-complexity metric, so rank Dart code by `cyclomatic` and
+`nesting`. Threshold breaches stay advisory measures by default;
+`--metrics-as-findings` ratchets them if you want "no new function above 20".
+Backfilling history costs a `pub get` per sampled commit: sample monthly, and
+pass `--ts` and `--commit` so each sample lands on its own day in the store.
+`lakos` still covers cycle detection.
 
 ### Anything else
 

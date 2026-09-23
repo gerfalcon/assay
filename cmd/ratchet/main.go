@@ -738,8 +738,8 @@ func cmdRules() {
 	}
 }
 
-// cmdImport ingests another tool's report: SARIF from any linter, or DCM's JSON
-// for Dart metrics. The format is sniffed, so the command line is the same.
+// cmdImport ingests another tool's report: SARIF from any linter, or DCM's JSON for Dart.
+// The format is sniffed, so the command line is the same for every producer.
 func cmdImport(args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
 	var o importOpts
@@ -757,6 +757,8 @@ func cmdImport(args []string) error {
 	fs.StringVar(&o.ts, "ts", "", "timestamp for emitted records, YYYY-MM-DD or RFC 3339 (default: now)")
 	fs.StringVar(&o.org, "org", "",
 		"organisation to attribute evidence to (else .quality.yaml org:, else inferred from git email; - for none)")
+	fs.BoolVar(&o.metricsAsFindings, "metrics-as-findings", false,
+		"dcm: also turn metric threshold breaches into findings, so the ratchet blocks new ones")
 	fs.BoolVar(&o.strictCaps, "strict-caps", false, "mode=check: also fail if peak complexity exceeds the baseline")
 	srcs := parseArgsMulti(fs, args)
 	if len(srcs) == 0 {
@@ -790,7 +792,7 @@ type importOpts struct {
 	root, format, tool, file, mode   string
 	includeSuppressed, force, asJSON bool
 	emit, repo, commit, ts, org      string
-	strictCaps                       bool
+	metricsAsFindings, strictCaps    bool
 }
 
 // imported is a decoded report, whichever producer wrote it.
@@ -859,6 +861,7 @@ func (in *imported) addDCM(rs []*dcm.Result) {
 		return
 	}
 	res := dcm.Merge(rs...)
+	in.rep.Findings = append(in.rep.Findings, res.Findings...)
 	in.rep.Funcs = res.Functions
 	in.measures, in.dcm, in.files = res.Measures, res, res.Files
 }
@@ -873,7 +876,7 @@ func noun(sarifs, total int) string {
 
 func decodeDCM(data []byte, o importOpts, cfg verdict.Config) (*dcm.Result, error) {
 	res, err := dcm.Import(bytes.NewReader(data),
-		dcm.Options{Root: o.root})
+		dcm.Options{Root: o.root, Config: cfg, MetricsAsFindings: o.metricsAsFindings})
 	if err != nil {
 		return nil, err
 	}

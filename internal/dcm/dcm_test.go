@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sherzing/assay/internal/model"
+	"github.com/sherzing/assay/internal/verdict"
 	"github.com/sherzing/assay/pkg/schema"
 )
 
@@ -126,13 +128,18 @@ func TestIssuesAsSingleObjectIsAccepted(t *testing.T) {
 
 var update = flag.Bool("update", false, "rewrite testdata/demo/golden.json from the current importer output")
 
+// demoConfig mirrors testdata/demo/.quality.yaml, which the CLI reads itself.
+var demoConfig = verdict.Config{Org: "demo", Verdicts: []verdict.Rule{
+	{Rule: "dcm:no-magic-number", Path: "lib/pricing.dart", Verdict: schema.WontFix, Reason: "the tax table is data, not magic"},
+}}
+
 // A real DCM 1.39 report over testdata/demo, a small synthetic package. The
 // golden file pins what this importer makes of it. If it changes, either DCM's
 // format moved or the mapping did, and both deserve a deliberate decision
 // rather than a silent `-update`.
 func TestRealReportGolden(t *testing.T) {
 	root := filepath.Join("testdata", "demo")
-	res, err := ImportFile(filepath.Join(root, "report.json"), Options{Root: root})
+	res, err := ImportFile(filepath.Join(root, "report.json"), Options{Root: root, Config: demoConfig})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,9 +148,10 @@ func TestRealReportGolden(t *testing.T) {
 	}
 	got, err := json.MarshalIndent(struct {
 		Files, Funcs int
-		Functions    any
+		Findings     []model.Finding
+		Functions    []model.FuncMetrics
 		Measures     []schema.Measure
-	}{res.Files, res.Funcs, res.Functions, res.Measures}, "", " ")
+	}{res.Files, res.Funcs, res.Findings, res.Functions, res.Measures}, "", " ")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,5 +184,30 @@ func TestRealReportGolden(t *testing.T) {
 			t.Errorf("duplicate measure %s", key)
 		}
 		seen[key] = true
+	}
+	fps := map[string]bool{}
+	for _, f := range res.Findings {
+		if fps[f.Fingerprint] {
+			t.Errorf("duplicate fingerprint %s on %s %s:%d", f.Fingerprint, f.Rule, f.File, f.Line)
+		}
+		fps[f.Fingerprint] = true
+	}
+	if f := findAt(t, res, "dcm:avoid-dynamic", "lib/cart.dart", 9); f.Verdict != "false-positive" || f.VerdictFrom != "comment" {
+		t.Errorf("the marker above `dynamic bag` was not harvested: %+v", f)
+	}
+	if f := findAt(t, res, "dcm:avoid-dynamic", "lib/cart.dart", 5); f.Verdict != "" {
+		t.Errorf("the global `dynamic` has no marker and no config pattern, yet: %+v", f)
+	}
+	if f := findAt(t, res, "dcm:no-magic-number", "lib/pricing.dart", 0); f.Verdict != "wont-fix" || f.VerdictFrom != "config" {
+		t.Errorf("the .quality.yaml pattern for lib/pricing.dart was not applied: %+v", f)
+	}
+	if f := findAt(t, res, "dcm:no-magic-number", "lib/cart.dart", 0); f.Verdict != "" {
+		t.Errorf("the .quality.yaml pattern is scoped to lib/pricing.dart, yet: %+v", f)
+	}
+	if f := byRule(t, res, "dcm:code-duplication"); !strings.Contains(f.Message, "also lib/cart.dart:") {
+		t.Errorf("duplication should name the other copy: %q", f.Message)
+	}
+	if f := byRule(t, res, "dcm:unused-files"); f.Line != 0 {
+		t.Errorf("an unused file has no line, got %d", f.Line)
 	}
 }

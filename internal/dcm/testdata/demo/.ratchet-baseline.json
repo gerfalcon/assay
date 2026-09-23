@@ -1,7 +1,229 @@
 {
   "version": "1",
-  "commit": "df7443e936ef8c4eb1b5a75c334c12640c18a487",
-  "tolerated": {},
+  "commit": "97574405594d88e703abf4b71ac9ff3597a75579",
+  "tolerated": {
+    "0499258c4cff811b": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.copyTotal"
+    },
+    "0590929c764c51d6": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.neverCalled"
+    },
+    "08d4cd47c15fcf47": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/pricing.dart",
+      "func": "unusedBand"
+    },
+    "0eacc98e8997dc34": {
+      "rule": "dcm:unused-files",
+      "file": "lib/legacy_helpers.dart"
+    },
+    "0f911b1842950d05": {
+      "rule": "dcm:avoid-unused-parameters",
+      "file": "lib/cart.dart",
+      "func": "Cart.total"
+    },
+    "1ac88784ce51c3a3": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/cart.dart",
+      "func": "extra"
+    },
+    "1f51fd181588ecfa": {
+      "rule": "dcm:unused-code:class",
+      "file": "lib/pricing.dart",
+      "func": "TaxTable"
+    },
+    "3256e67159cd1cdf": {
+      "rule": "dcm:unused-files",
+      "file": "lib/cart.dart"
+    },
+    "330d02a3daa08bf4": {
+      "rule": "dcm:avoid-dynamic",
+      "file": "lib/cart.dart",
+      "func": "Cart"
+    },
+    "3877afcdefd8a2f2": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.total"
+    },
+    "443c45e054006197": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.discounted"
+    },
+    "456dcedf7c39f72f": {
+      "rule": "dcm:avoid-global-state",
+      "file": "lib/cart.dart"
+    },
+    "45746310b29a6a51": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/pricing.dart",
+      "func": "high"
+    },
+    "4de7880e152b3f14": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "clear"
+    },
+    "4fb3ab50d44461bd": {
+      "rule": "dcm:code-duplication",
+      "file": "lib/cart.dart",
+      "func": "total"
+    },
+    "50a597d0dc2640a0": {
+      "rule": "dcm:avoid-unused-parameters",
+      "file": "lib/cart.dart",
+      "func": "Cart.copyTotal"
+    },
+    "573c554d8100386a": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "discounted"
+    },
+    "5e30b93b324d07a8": {
+      "rule": "dcm:avoid-dynamic",
+      "file": "lib/cart.dart"
+    },
+    "5ff2c78e8a10a4ba": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.total"
+    },
+    "687654d76529a147": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/cart.dart",
+      "func": "bag"
+    },
+    "84128d60307fb229": {
+      "rule": "dcm:unused-code:top-level-variable",
+      "file": "lib/cart.dart",
+      "func": "globalScratch"
+    },
+    "8a832247bbcde88b": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/pricing.dart",
+      "func": "applyTaxTo"
+    },
+    "8bd28805d27bbede": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "copyTotal"
+    },
+    "8e86d88b52c1c0d6": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/pricing.dart",
+      "func": "applyTaxTo"
+    },
+    "98f2dff2ce9e56da": {
+      "rule": "dcm:avoid-dynamic",
+      "file": "lib/cart.dart",
+      "func": "Cart"
+    },
+    "a8b4267a8d31f2f9": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/cart.dart",
+      "func": "label"
+    },
+    "b04f583707ddbe17": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.addAll"
+    },
+    "b136c54fa948bd30": {
+      "rule": "dcm:prefer-immediate-return",
+      "file": "lib/cart.dart",
+      "func": "Cart.discounted"
+    },
+    "b5de9e703d621fe8": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "total"
+    },
+    "ba5db7d884c69378": {
+      "rule": "dcm:avoid-ignoring-return-values",
+      "file": "lib/cart.dart",
+      "func": "Cart.addAll"
+    },
+    "bf66150155b09e22": {
+      "rule": "dcm:no-empty-block",
+      "file": "lib/cart.dart",
+      "func": "Cart.clear"
+    },
+    "c26ced6237f50f61": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/pricing.dart",
+      "func": "applyTaxTo"
+    },
+    "c3cf47ac0fd2f5b9": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/cart.dart",
+      "func": "prices"
+    },
+    "c73122dca39b0122": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.copyTotal"
+    },
+    "cc3cc8113a485342": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "shout"
+    },
+    "cf99a4352f7a8228": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "addAll"
+    },
+    "d1b4fe2c5c905fa7": {
+      "rule": "dcm:unused-code:method",
+      "file": "lib/cart.dart",
+      "func": "neverCalled"
+    },
+    "d97d1da2aaa1b2c5": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/cart.dart",
+      "func": "Cart.shout"
+    },
+    "df5f513887db07c0": {
+      "rule": "dcm:avoid-non-null-assertion",
+      "file": "lib/cart.dart",
+      "func": "Cart.shout"
+    },
+    "e137130d3f49cd45": {
+      "rule": "dcm:unused-code:field",
+      "file": "lib/pricing.dart",
+      "func": "low"
+    },
+    "e2e41dfdc1b2d551": {
+      "rule": "dcm:prefer-match-file-name",
+      "file": "lib/pricing.dart",
+      "func": "TaxTable"
+    },
+    "ea735948b1b8241d": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/pricing.dart",
+      "func": "applyTaxTo"
+    },
+    "f7310738a2b3e6e4": {
+      "rule": "dcm:unused-code:class",
+      "file": "lib/cart.dart",
+      "func": "Cart"
+    },
+    "f8b79b2448cd2449": {
+      "rule": "dcm:no-magic-number",
+      "file": "lib/pricing.dart",
+      "func": "applyTaxTo"
+    },
+    "fcb7973394489fa2": {
+      "rule": "dcm:unused-code:function",
+      "file": "lib/legacy_helpers.dart",
+      "func": "legacyRound"
+    }
+  },
   "caps": {
     "maxCyclomatic": 5,
     "maxCognitive": 0,

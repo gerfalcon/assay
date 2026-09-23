@@ -367,3 +367,20 @@ func TestFindingsOnAnEmptySlice(t *testing.T) {
 		t.Errorf("no findings should print nothing, got %q", buf.String())
 	}
 }
+
+// An imported finding about a whole file, such as an unused one, has no
+// position; "0:0" would send someone to look for a line.
+func TestFindingsWithoutALineOmitThePosition(t *testing.T) {
+	var buf bytes.Buffer
+	Findings(&buf, []model.Finding{
+		{File: "lib/old.dart", Rule: "dcm:unused-files", Message: "Unused file"},
+		{File: "lib/old.dart", Rule: "dcm:avoid-dynamic", Message: "Avoid dynamic.", Line: 3, Col: 5},
+	})
+	out := buf.String()
+	if strings.Contains(out, "0:0") {
+		t.Errorf("a finding without a line printed a bogus position:\n%s", out)
+	}
+	if !strings.Contains(out, "  dcm:unused-files") || !strings.Contains(out, "  3:5  dcm:avoid-dynamic") {
+		t.Errorf("unexpected output:\n%s", out)
+	}
+}

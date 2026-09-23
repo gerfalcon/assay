@@ -187,6 +187,12 @@ func Findings(w io.Writer, fs []model.Finding) {
 			cur = f.File
 			fmt.Fprintf(w, "\n%s\n", cur)
 		}
+		if f.Line == 0 {
+			// An imported finding about a whole file, such as an unused one,
+			// has no position; "0:0" would send someone to look for a line.
+			fmt.Fprintf(w, "  %-26s %s\n", f.Rule, f.Message)
+			continue
+		}
 		fmt.Fprintf(w, "  %d:%d  %-26s %s\n", f.Line, f.Col, f.Rule, f.Message)
 		if f.Suggest != "" {
 			fmt.Fprintf(w, "  %s   → %s\n", strings.Repeat(" ", len(fmt.Sprint(f.Line))+len(fmt.Sprint(f.Col))), f.Suggest)

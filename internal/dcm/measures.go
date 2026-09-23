@@ -56,9 +56,12 @@ func (im *importer) values(files []fileIssues) {
 	}
 }
 
-// value records one measurement at its scope.
+// value records one measurement at its scope and, on request, a breach finding.
 func (im *importer) value(path string, is issue, seen map[string]bool) {
 	scope, mpath := scopeOf(is.ID, path, is.DeclarationName)
+	if scope != schema.ScopeFile && is.Location.StartLine > 0 {
+		im.index(path, is.DeclarationName, is.Location)
+	}
 	if scope == schema.ScopeFunction {
 		im.funcs[mpath] = true
 	}
@@ -76,6 +79,9 @@ func (im *importer) value(path string, is issue, seen map[string]bool) {
 	}
 	seen[key] = true
 	im.res.Measures = append(im.res.Measures, schema.Measure{Scope: scope, Path: mpath, Metric: name, Value: v})
+	if im.opt.MetricsAsFindings && breached(is.Level) {
+		im.breach(path, is)
+	}
 }
 
 // record keeps per-function metrics in the Go scan's shape, so a Dart baseline gets real caps.

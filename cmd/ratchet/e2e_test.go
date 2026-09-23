@@ -679,6 +679,65 @@ func TestImportDcmMeasuresAndCaps(t *testing.T) {
 		MustSay(t, "merged 2 reports", `"path":"lib/b.dart:Foo.add"`, `"metric":"funcs","value":2`)
 }
 
+// DCM findings enter the gate: rules namespaced, fingerprints on the source
+// span so a line shift does not fail check, identical instances numbered, and
+// verdicts from markers and .quality.yaml harvested into the emitted records.
+func TestImportDcmFindingsGateAndVerdicts(t *testing.T) {
+	bin := ratchet(t)
+	dir := cmdtest.Tree(t, map[string]string{
+		"lib/a.dart": `import 'dart:async';
+
+class Foo {
+  // quality:false-positive the map is genuinely heterogeneous here
+  dynamic bag = {};
+  dynamic extra;
+
+  int add(int a, int b) {
+    return a + b;
+  }
+}
+`,
+		"lib/old.dart":  "// nothing imports this\n",
+		".quality.yaml": "verdicts:\n  - rule: dcm:unused-files\n    verdict: wont-fix\n    reason: kept for the demo\n",
+	})
+	report := func(off int, extra string) string {
+		n := func(base int) string { return strconv.Itoa(base + off) }
+		return `{"formatVersion":13,"timestamp":"2026-09-22 10:00:00",
+ "analyzeResults":[{"path":"lib/a.dart","issues":[
+   {"id":"avoid-dynamic","message":"Avoid using dynamic type.","location":{"startLine":` + n(5) + `,"startColumn":3,"endLine":` + n(5) + `,"endColumn":10},"severity":"warning"},
+   {"id":"avoid-dynamic","message":"Avoid using dynamic type.","location":{"startLine":` + n(6) + `,"startColumn":3,"endLine":` + n(6) + `,"endColumn":10},"severity":"warning"}` + extra + `]}],
+ "metricResults":[{"path":"lib/a.dart","issues":[
+   {"id":"cyclomatic-complexity","message":"","location":{"startLine":` + n(8) + `,"startColumn":3,"endLine":` + n(10) + `,"endColumn":4},"level":"very high","threshold":20,"value":25,"declarationName":"Foo.add"}]}],
+ "unusedFilesResults":[{"path":"lib/old.dart","issues":[{"id":"unused-file-issue","message":"Unused file"}]}],
+ "summary":[{"title":"Scanned files","value":2}]}`
+	}
+	cmdtest.WriteFile(t, dir, "dcm.json", report(0, ""))
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".").MustPass(t).
+		MustSay(t, "imported 3 findings", "dcm:avoid-dynamic", "dcm:unused-files")
+	// Two identical `dynamic` spans in one class get ordinals: three entries.
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--mode", "baseline").MustPass(t).
+		MustSay(t, "3 tolerated findings")
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--json").MustPass(t).
+		MustSay(t, `"verdict": "false-positive"`, `"verdictSource": "comment"`, `"verdict": "wont-fix"`, `"verdictSource": "config"`)
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--emit", "findings", "--repo", "app", "--org=-").MustPass(t).
+		MustSay(t, `"kind":"finding"`, `"rule":"dcm:avoid-dynamic"`, `"kind":"verdict"`)
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--metrics-as-findings").MustPass(t).
+		MustSay(t, "imported 4 findings", "dcm:metrics:cyclomatic-complexity")
+
+	// A new issue fails the gate and is named.
+	more := `,{"id":"prefer-match-file-name","message":"Class name does not match file name.","location":{"startLine":3,"startColumn":7,"endLine":3,"endColumn":10},"severity":"style"}`
+	cmdtest.WriteFile(t, dir, "more.json", report(0, more))
+	bin.Run(t, dir, "import", "more.json", "--root", ".", "--mode", "check").MustFail(t).
+		MustSay(t, "1 new", "prefer-match-file-name")
+
+	// Moving every line does not: identity is the offending source, not the line.
+	cmdtest.WriteFile(t, dir, "lib/a.dart", "// a new header comment\n"+cmdtest.ReadFile(t, dir, "lib/a.dart"))
+	cmdtest.WriteFile(t, dir, "moved.json", report(1, ""))
+	bin.Run(t, dir, "import", "moved.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+}
+
 // exceptions is the "what have we agreed to live with" report. Its value is
 // that an expired review-by date is visible; an exception nobody revisits is
 // how a baseline becomes permanent.

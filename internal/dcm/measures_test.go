@@ -46,8 +46,8 @@ func TestMeasuresScopesNamesAndRollups(t *testing.T) {
 	if v := measure(t, res, schema.ScopeProject, "", "funcs"); v != 2 || res.Funcs != 2 {
 		t.Errorf("funcs = %v / %d, want 2 (classes are not functions)", v, res.Funcs)
 	}
-	if v := measure(t, res, schema.ScopeProject, "", "files"); v != 1 || res.Files != 1 {
-		t.Errorf("files = %v / %d, want 1", v, res.Files)
+	if v := measure(t, res, schema.ScopeProject, "", "files"); v != 2 || res.Files != 2 {
+		t.Errorf("files = %v / %d, want 2: lib/old.dart is mentioned by the unused-files section", v, res.Files)
 	}
 }
 
@@ -70,14 +70,15 @@ func TestFunctionsCarryGoShapedMetrics(t *testing.T) {
 // Several reports, such as one per package, merge into one result whose
 // roll-ups cover the union rather than repeating once per report.
 func TestMergeRecomputesRollups(t *testing.T) {
-	other := strings.ReplaceAll(strings.ReplaceAll(report(0), "lib/a.dart", "lib/b.dart"), `"value":25`, `"value":9`)
+	// A second package: every file distinct, so counts simply add up.
+	other := strings.NewReplacer("lib/a.dart", "lib/b.dart", "lib/old.dart", "lib/older.dart", `"value":25`, `"value":9`).Replace(report(0))
 	b, err := Import(strings.NewReader(other), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	merged := Merge(imp(t, 0, Options{}), b)
-	if merged.Funcs != 4 || merged.Files != 2 {
-		t.Errorf("funcs = %d files = %d, want 4 and 2", merged.Funcs, merged.Files)
+	if merged.Funcs != 4 || merged.Files != 4 {
+		t.Errorf("funcs = %d files = %d, want 4 and 4", merged.Funcs, merged.Files)
 	}
 	if v := measure(t, merged, schema.ScopeProject, "", "cyclomatic.max"); v != 25 {
 		t.Errorf("cyclomatic.max = %v, want 25", v)
