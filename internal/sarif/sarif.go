@@ -109,6 +109,22 @@ func Import(r io.Reader, opt Options) ([]model.Finding, error) {
 	if err := json.NewDecoder(r).Decode(&d); err != nil {
 		return nil, fmt.Errorf("parse sarif: %w", err)
 	}
+
+	// REFUSE ANYTHING BUT 2.1.0. SARIF 1.0 nests results under a different
+	// shape entirely, so this decoder finds nothing in one and reports
+	// "imported 0 findings" — a clean bill of health for a file it could not
+	// read.
+	//
+	// Not hypothetical: Roslyn's `-p:ErrorLog=out.sarif` emits 1.0 by DEFAULT.
+	// The obvious way to get diagnostics out of a .NET build produces exactly
+	// the file this used to swallow. You have to ask for
+	// `-p:ErrorLog=out.sarif,version=2.1` to get 2.1.0.
+	if v := strings.TrimSpace(d.Version); v != "" && !strings.HasPrefix(v, "2.") {
+		return nil, fmt.Errorf("sarif version %q is not supported — this reads 2.1.0.\n"+
+			"  If this came from a .NET build, Roslyn defaults to SARIF 1.0; ask for 2.1 with\n"+
+			"    dotnet build -p:ErrorLog=out.sarif,version=2.1", v)
+	}
+
 	if len(d.Runs) == 0 {
 		return nil, nil
 	}
