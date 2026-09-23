@@ -46,6 +46,9 @@ const (
 	ScopeModule   Scope = "module"
 	ScopeFile     Scope = "file"
 	ScopeFunction Scope = "function"
+	// ScopeClass is the level DCM's object-oriented metrics apply to. Go has
+	// no classes, so the native scan never emits it; the wire shape is unchanged.
+	ScopeClass Scope = "class"
 )
 
 // Severity ranks a finding.

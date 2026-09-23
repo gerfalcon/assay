@@ -1,0 +1,1525 @@
+{
+ "Files": 3,
+ "Funcs": 9,
+ "Findings": [
+  {
+   "rule": "dcm:unused-files",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 0,
+   "col": 0,
+   "message": "Unused file",
+   "fingerprint": "3256e67159cd1cdf"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 1,
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "5e30b93b324d07a8"
+  },
+  {
+   "rule": "dcm:avoid-global-state",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 9,
+   "message": "Avoid global variables without the 'const' or 'final' keyword. Try removing it or making immutable.",
+   "fingerprint": "456dcedf7c39f72f"
+  },
+  {
+   "rule": "dcm:unused-code:top-level-variable",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 5,
+   "col": 1,
+   "func": "globalScratch",
+   "message": "Unused top level variable 'globalScratch'",
+   "fingerprint": "84128d60307fb229"
+  },
+  {
+   "rule": "dcm:unused-code:class",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 7,
+   "col": 1,
+   "func": "Cart",
+   "message": "Unused class 'Cart'",
+   "fingerprint": "f7310738a2b3e6e4"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 9,
+   "col": 3,
+   "func": "Cart",
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "330d02a3daa08bf4",
+   "verdict": "false-positive",
+   "verdictReason": "the bag is genuinely heterogeneous by design",
+   "verdictSource": "comment"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 9,
+   "col": 3,
+   "func": "bag",
+   "message": "Unused field 'bag'",
+   "fingerprint": "687654d76529a147",
+   "verdict": "false-positive",
+   "verdictReason": "the bag is genuinely heterogeneous by design",
+   "verdictSource": "comment"
+  },
+  {
+   "rule": "dcm:avoid-dynamic",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 10,
+   "col": 3,
+   "func": "Cart",
+   "message": "Avoid 'dynamic' types. Try replacing it with a different type.",
+   "fingerprint": "98f2dff2ce9e56da"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 10,
+   "col": 3,
+   "func": "extra",
+   "message": "Unused field 'extra'",
+   "fingerprint": "1ac88784ce51c3a3"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 11,
+   "col": 3,
+   "func": "prices",
+   "message": "Unused field 'prices'",
+   "fingerprint": "c3cf47ac0fd2f5b9"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 12,
+   "col": 3,
+   "func": "label",
+   "message": "The 'label' field is used but never assigned a value",
+   "fingerprint": "a8b4267a8d31f2f9"
+  },
+  {
+   "rule": "dcm:avoid-unused-parameters",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 45,
+   "func": "Cart.total",
+   "message": "Parameter is not used. Try removing it, renaming to _ or referencing it in code.",
+   "fingerprint": "0f911b1842950d05"
+  },
+  {
+   "rule": "dcm:code-duplication",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 3,
+   "func": "total",
+   "message": "This method has 1 duplicate declaration — also lib/cart.dart:47 (copyTotal)",
+   "fingerprint": "4fb3ab50d44461bd"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "col": 3,
+   "func": "total",
+   "message": "Unused method 'total'",
+   "fingerprint": "b5de9e703d621fe8"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 18,
+   "col": 17,
+   "func": "Cart.total",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "5ff2c78e8a10a4ba"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 19,
+   "col": 22,
+   "func": "Cart.total",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "3877afcdefd8a2f2"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 31,
+   "col": 3,
+   "func": "discounted",
+   "message": "Unused method 'discounted'",
+   "fingerprint": "573c554d8100386a"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 32,
+   "col": 29,
+   "func": "Cart.discounted",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "443c45e054006197"
+  },
+  {
+   "rule": "dcm:prefer-immediate-return",
+   "severity": "info",
+   "file": "lib/cart.dart",
+   "line": 32,
+   "col": 5,
+   "func": "Cart.discounted",
+   "message": "Prefer returning the result immediately instead of declaring an intermediate variable right before the return statement.",
+   "fingerprint": "b136c54fa948bd30"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 36,
+   "col": 3,
+   "func": "addAll",
+   "message": "Unused method 'addAll'",
+   "fingerprint": "cf99a4352f7a8228"
+  },
+  {
+   "rule": "dcm:avoid-ignoring-return-values",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 37,
+   "col": 5,
+   "func": "Cart.addAll",
+   "message": "Avoid ignoring return values. Try assigning this invocation to a variable and referencing it in your code.",
+   "fingerprint": "ba5db7d884c69378"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 37,
+   "col": 26,
+   "func": "Cart.addAll",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "b04f583707ddbe17"
+  },
+  {
+   "rule": "dcm:no-empty-block",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 41,
+   "col": 16,
+   "func": "Cart.clear",
+   "message": "This block is empty. Try checking it for potentially missing code.",
+   "fingerprint": "bf66150155b09e22"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 41,
+   "col": 3,
+   "func": "clear",
+   "message": "Unused method 'clear'",
+   "fingerprint": "4de7880e152b3f14"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 43,
+   "col": 3,
+   "func": "shout",
+   "message": "Unused method 'shout'",
+   "fingerprint": "cc3cc8113a485342"
+  },
+  {
+   "rule": "dcm:avoid-non-null-assertion",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 44,
+   "col": 12,
+   "func": "Cart.shout",
+   "message": "Avoid non-null assertions. Try rewriting the code without it.",
+   "fingerprint": "df5f513887db07c0"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 44,
+   "col": 52,
+   "func": "Cart.shout",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "d97d1da2aaa1b2c5"
+  },
+  {
+   "rule": "dcm:avoid-unused-parameters",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 47,
+   "col": 49,
+   "func": "Cart.copyTotal",
+   "message": "Parameter is not used. Try removing it, renaming to _ or referencing it in code.",
+   "fingerprint": "50a597d0dc2640a0"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 47,
+   "col": 3,
+   "func": "copyTotal",
+   "message": "Unused method 'copyTotal'",
+   "fingerprint": "8bd28805d27bbede"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 51,
+   "col": 17,
+   "func": "Cart.copyTotal",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "c73122dca39b0122"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 52,
+   "col": 22,
+   "func": "Cart.copyTotal",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "0499258c4cff811b"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 64,
+   "col": 24,
+   "func": "Cart.neverCalled",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "0590929c764c51d6"
+  },
+  {
+   "rule": "dcm:unused-code:method",
+   "severity": "warn",
+   "file": "lib/cart.dart",
+   "line": 64,
+   "col": 3,
+   "func": "neverCalled",
+   "message": "Unused method 'neverCalled'",
+   "fingerprint": "d1b4fe2c5c905fa7"
+  },
+  {
+   "rule": "dcm:unused-files",
+   "severity": "warn",
+   "file": "lib/legacy_helpers.dart",
+   "line": 0,
+   "col": 0,
+   "message": "Unused file",
+   "fingerprint": "0eacc98e8997dc34"
+  },
+  {
+   "rule": "dcm:unused-code:function",
+   "severity": "warn",
+   "file": "lib/legacy_helpers.dart",
+   "line": 2,
+   "col": 1,
+   "func": "legacyRound",
+   "message": "Unused function 'legacyRound'",
+   "fingerprint": "fcb7973394489fa2"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 2,
+   "col": 16,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "f8b79b2448cd2449",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 3,
+   "col": 36,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "c26ced6237f50f61",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 3,
+   "col": 30,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "8e86d88b52c1c0d6",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 5,
+   "col": 28,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "ea735948b1b8241d",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:no-magic-number",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 5,
+   "col": 33,
+   "func": "applyTaxTo",
+   "message": "Avoid magic numbers. Try extracting them to named constants or variables.",
+   "fingerprint": "8a832247bbcde88b",
+   "verdict": "wont-fix",
+   "verdictReason": "the tax table is data, not magic",
+   "verdictSource": "config"
+  },
+  {
+   "rule": "dcm:prefer-match-file-name",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 8,
+   "col": 7,
+   "func": "TaxTable",
+   "message": "The first class name does not match the file name. Try renaming it.",
+   "fingerprint": "e2e41dfdc1b2d551"
+  },
+  {
+   "rule": "dcm:unused-code:class",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 8,
+   "col": 1,
+   "func": "TaxTable",
+   "message": "Unused class 'TaxTable'",
+   "fingerprint": "1f51fd181588ecfa"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 9,
+   "col": 3,
+   "func": "low",
+   "message": "Unused field 'low'",
+   "fingerprint": "e137130d3f49cd45"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 10,
+   "col": 3,
+   "func": "high",
+   "message": "Unused field 'high'",
+   "fingerprint": "45746310b29a6a51"
+  },
+  {
+   "rule": "dcm:unused-code:field",
+   "severity": "warn",
+   "file": "lib/pricing.dart",
+   "line": 11,
+   "col": 3,
+   "func": "unusedBand",
+   "message": "Unused field 'unusedBand'",
+   "fingerprint": "08d4cd47c15fcf47"
+  }
+ ],
+ "Functions": [
+  {
+   "name": "Cart.total",
+   "file": "lib/cart.dart",
+   "line": 14,
+   "exported": true,
+   "cyclomatic": 5,
+   "cognitive": 0,
+   "maxNesting": 3,
+   "statements": 14,
+   "params": 3,
+   "results": 0
+  },
+  {
+   "name": "Cart.discounted",
+   "file": "lib/cart.dart",
+   "line": 31,
+   "exported": true,
+   "cyclomatic": 1,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 2,
+   "params": 1,
+   "results": 0
+  },
+  {
+   "name": "Cart.addAll",
+   "file": "lib/cart.dart",
+   "line": 36,
+   "exported": true,
+   "cyclomatic": 1,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 2,
+   "params": 1,
+   "results": 0
+  },
+  {
+   "name": "Cart.clear",
+   "file": "lib/cart.dart",
+   "line": 41,
+   "exported": true,
+   "cyclomatic": 0,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 0,
+   "params": 0,
+   "results": 0
+  },
+  {
+   "name": "Cart.shout",
+   "file": "lib/cart.dart",
+   "line": 43,
+   "exported": true,
+   "cyclomatic": 1,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 1,
+   "params": 0,
+   "results": 0
+  },
+  {
+   "name": "Cart.copyTotal",
+   "file": "lib/cart.dart",
+   "line": 47,
+   "exported": true,
+   "cyclomatic": 5,
+   "cognitive": 0,
+   "maxNesting": 3,
+   "statements": 14,
+   "params": 3,
+   "results": 0
+  },
+  {
+   "name": "Cart.neverCalled",
+   "file": "lib/cart.dart",
+   "line": 64,
+   "exported": true,
+   "cyclomatic": 1,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 1,
+   "params": 0,
+   "results": 0
+  },
+  {
+   "name": "legacyRound",
+   "file": "lib/legacy_helpers.dart",
+   "line": 2,
+   "exported": true,
+   "cyclomatic": 1,
+   "cognitive": 0,
+   "maxNesting": 0,
+   "statements": 1,
+   "params": 1,
+   "results": 0
+  },
+  {
+   "name": "applyTaxTo",
+   "file": "lib/pricing.dart",
+   "line": 1,
+   "exported": true,
+   "cyclomatic": 2,
+   "cognitive": 0,
+   "maxNesting": 1,
+   "statements": 4,
+   "params": 1,
+   "results": 0
+  }
+ ],
+ "Measures": [
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/pricing.dart",
+   "metric": "imports.external",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/pricing.dart",
+   "metric": "imports",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "class",
+   "path": "lib/pricing.dart:TaxTable",
+   "metric": "methods",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "cyclomatic",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "halstead.volume",
+   "value": 104
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "loc",
+   "value": 6
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "nesting",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "params",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "sloc",
+   "value": 4
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/pricing.dart:applyTaxTo",
+   "metric": "maintainability",
+   "value": 0.773
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/legacy_helpers.dart",
+   "metric": "imports.external",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/legacy_helpers.dart",
+   "metric": "imports",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "cyclomatic",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "halstead.volume",
+   "value": 11.61
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "loc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "nesting",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "params",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "sloc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/legacy_helpers.dart:legacyRound",
+   "metric": "maintainability",
+   "value": 0.924
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/cart.dart",
+   "metric": "imports.external",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "file",
+   "path": "lib/cart.dart",
+   "metric": "imports",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "class",
+   "path": "lib/cart.dart:Cart",
+   "metric": "methods",
+   "value": 7
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "class",
+   "path": "lib/cart.dart:Cart",
+   "metric": "weight",
+   "value": 0.545
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "cyclomatic",
+   "value": 5
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "halstead.volume",
+   "value": 261.343
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "loc",
+   "value": 16
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "nesting",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "params",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "sloc",
+   "value": 14
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.total",
+   "metric": "maintainability",
+   "value": 0.667
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "cyclomatic",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "halstead.volume",
+   "value": 27
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "loc",
+   "value": 4
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "nesting",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "params",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "sloc",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.discounted",
+   "metric": "maintainability",
+   "value": 0.857
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "cyclomatic",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "halstead.volume",
+   "value": 58.81
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "loc",
+   "value": 4
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "nesting",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "params",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "sloc",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.addAll",
+   "metric": "maintainability",
+   "value": 0.833
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.clear",
+   "metric": "loc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.clear",
+   "metric": "params",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "cyclomatic",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "halstead.volume",
+   "value": 77.709
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "loc",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "nesting",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "params",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "sloc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.shout",
+   "metric": "maintainability",
+   "value": 0.866
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "cyclomatic",
+   "value": 5
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "halstead.volume",
+   "value": 261.343
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "loc",
+   "value": 16
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "nesting",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "params",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "sloc",
+   "value": 14
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.copyTotal",
+   "metric": "maintainability",
+   "value": 0.667
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "cyclomatic",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "halstead.volume",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "loc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "nesting",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "params",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "sloc",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "function",
+   "path": "lib/cart.dart:Cart.neverCalled",
+   "metric": "maintainability",
+   "value": 0.978
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "cyclomatic.max",
+   "value": 5
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "cyclomatic.mean",
+   "value": 2.125
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "cyclomatic.p50",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "cyclomatic.p90",
+   "value": 5
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "halstead.volume.max",
+   "value": 261.343
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "halstead.volume.mean",
+   "value": 100.476875
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "halstead.volume.p50",
+   "value": 58.81
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "halstead.volume.p90",
+   "value": 261.343
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "loc.max",
+   "value": 16
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "loc.mean",
+   "value": 5.777777777777778
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "loc.p50",
+   "value": 4
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "loc.p90",
+   "value": 16
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "maintainability.max",
+   "value": 0.978
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "maintainability.mean",
+   "value": 0.820625
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "maintainability.p50",
+   "value": 0.833
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "maintainability.p90",
+   "value": 0.924
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "nesting.max",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "nesting.mean",
+   "value": 0.875
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "nesting.p50",
+   "value": 0
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "nesting.p90",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "params.max",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "params.mean",
+   "value": 1.1111111111111112
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "params.p50",
+   "value": 1
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "params.p90",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "sloc.max",
+   "value": 14
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "sloc.mean",
+   "value": 4.875
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "sloc.p50",
+   "value": 2
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "sloc.p90",
+   "value": 14
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "files",
+   "value": 3
+  },
+  {
+   "v": 0,
+   "kind": "",
+   "repo": "",
+   "ts": "0001-01-01T00:00:00Z",
+   "scope": "project",
+   "metric": "funcs",
+   "value": 9
+  }
+ ]
+}

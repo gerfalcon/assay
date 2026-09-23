@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -609,6 +610,108 @@ func TestImportSarifBaselineAndCheck(t *testing.T) {
 	bin.Run(t, dir, "import", "--root", ".").MustFail(t).MustSay(t, "usage: ratchet import")
 	bin.Run(t, dir, "import", "first.sarif", "--mode", "sideways").MustFail(t).
 		MustSay(t, "unknown mode")
+}
+
+// DCM is how the ratchet reaches Dart and Flutter. Its JSON carries findings
+// and metrics in one document, so one import serves the gate and the store.
+func TestImportDcmBaselineCheckAndEmit(t *testing.T) {
+	bin := ratchet(t)
+	dir := cmdtest.Tree(t, map[string]string{
+		"lib/a.dart": `import 'dart:async';
+
+class Foo {
+  // quality:false-positive the map is genuinely heterogeneous here
+  dynamic bag = {};
+
+  int add(int a, int b) {
+    return a + b;
+  }
+}
+`,
+		"lib/old.dart": "// nothing imports this\n",
+	})
+	report := func(off int, extra string) string {
+		n := func(base int) string { return strconv.Itoa(base + off) }
+		return `{"formatVersion":13,"timestamp":"2026-09-22 10:00:00",
+ "analyzeResults":[{"path":"lib/a.dart","issues":[
+   {"id":"avoid-dynamic","message":"Avoid using dynamic type.","location":{"startLine":` + n(5) + `,"startColumn":3,"endLine":` + n(5) + `,"endColumn":10},"severity":"warning"}` + extra + `]}],
+ "metricResults":[{"path":"lib/a.dart","issues":[
+   {"id":"cyclomatic-complexity","message":"","location":{"startLine":` + n(7) + `,"startColumn":3,"endLine":` + n(9) + `,"endColumn":4},"level":"none","threshold":20,"value":1,"declarationName":"Foo.add"}]}],
+ "unusedFilesResults":[{"path":"lib/old.dart","issues":[{"id":"unused-file-issue","message":"Unused file"}]}],
+ "summary":[{"title":"Scanned files","value":2}]}`
+	}
+
+	cmdtest.WriteFile(t, dir, "dcm.json", report(0, ""))
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".").MustPass(t).
+		MustSay(t, "imported 2 findings", "dcm:avoid-dynamic", "dcm:unused-files", "measured 1 declaration")
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--mode", "baseline").MustPass(t).
+		MustSay(t, "2 tolerated findings")
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+
+	// A new issue fails the gate and is named.
+	more := `,{"id":"prefer-match-file-name","message":"Class name does not match file name.","location":{"startLine":3,"startColumn":7,"endLine":3,"endColumn":10},"severity":"style"}`
+	cmdtest.WriteFile(t, dir, "more.json", report(0, more))
+	bin.Run(t, dir, "import", "more.json", "--root", ".", "--mode", "check").MustFail(t).
+		MustSay(t, "1 new", "prefer-match-file-name")
+
+	// Moving every line does not: identity is the offending source, not the line.
+	cmdtest.WriteFile(t, dir, "lib/a.dart", "// a new header comment\n"+cmdtest.ReadFile(t, dir, "lib/a.dart"))
+	cmdtest.WriteFile(t, dir, "moved.json", report(1, ""))
+	bin.Run(t, dir, "import", "moved.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+
+	// The same document feeds the store: measures under the Go scan's names,
+	// findings with the verdict harvested from the marker in the source.
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--emit", "measures",
+		"--repo", "app", "--ts", "2026-01-15", "--commit", "abc123", "--org=-").MustPass(t).
+		MustSay(t, `"kind":"measure"`, `"scope":"function"`, `"path":"lib/a.dart:Foo.add"`, `"metric":"cyclomatic"`,
+			`"metric":"cyclomatic.p90"`, `"metric":"findings.total"`, `"repo":"app"`, `"commit":"abc123"`,
+			`"ts":"2026-01-15T00:00:00Z"`)
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--emit", "findings", "--repo", "app", "--org=-").MustPass(t).
+		MustSay(t, `"kind":"finding"`, `"rule":"dcm:avoid-dynamic"`, `"verdict":"false-positive"`, `"kind":"verdict"`)
+
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--emit", "sideways").MustFail(t).MustSay(t, "unknown --emit")
+	// Forcing the wrong format is not an error, only an empty import: the SARIF
+	// decoder is lenient on purpose. Sniffing is what makes --format optional.
+	bin.Run(t, dir, "import", "dcm.json", "--root", ".", "--format", "sarif").MustPass(t).MustSay(t, "imported 0 findings")
+}
+
+// Caps, config verdicts and the smaller flags on the DCM path, plus the
+// .quality.yaml side effect that now reaches SARIF imports too.
+func TestImportDcmCapsVerdictsAndFlags(t *testing.T) {
+	bin := ratchet(t)
+	dir := cmdtest.Tree(t, map[string]string{
+		"lib/a.dart":    "class Foo {\n  dynamic bag = {};\n  int add(int a, int b) {\n    return a + b;\n  }\n}\n",
+		".quality.yaml": "verdicts:\n  - rule: dcm:avoid-dynamic\n    verdict: accepted\n    reason: carried until the model is typed\n  - rule: otherlint:NULLREF\n    verdict: wont-fix\n    reason: guarded by the caller\n",
+	})
+	report := func(cyc int) string {
+		lvl := "below"
+		if cyc > 20 {
+			lvl = "very high"
+		}
+		return `{"formatVersion":13,"analyzeResults":[{"path":"lib/a.dart","issues":[{"id":"avoid-dynamic","message":"Avoid dynamic.","location":{"startLine":2,"startColumn":3,"endLine":2,"endColumn":10},"severity":"warning"}]}],
+ "metricResults":[{"path":"lib/a.dart","issues":[{"id":"cyclomatic-complexity","message":"","location":{"startLine":3,"startColumn":3,"endLine":5,"endColumn":4},"level":"` + lvl + `","threshold":20,"value":` + strconv.Itoa(cyc) + `,"declarationName":"Foo.add"}]}]}`
+	}
+	cmdtest.WriteFile(t, dir, "calm.json", report(1))
+	cmdtest.WriteFile(t, dir, "spiky.json", report(30))
+
+	// --json carries Go-shaped per-function records and the config verdict.
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--json").MustPass(t).
+		MustSay(t, `"name": "Foo.add"`, `"cyclomatic": 1`, `"verdict": "accepted"`, `"files": 1`)
+
+	// Caps come from the metrics, so a Dart baseline can hold a ceiling too.
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--mode", "baseline").MustPass(t)
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--mode", "check", "--strict-caps").MustPass(t).MustSay(t, "0 new")
+	bin.Run(t, dir, "import", "spiky.json", "--root", ".", "--mode", "check", "--strict-caps").MustFail(t).
+		MustSay(t, "cap breach", "cyclomatic 30 exceeds baseline 1")
+	bin.Run(t, dir, "import", "spiky.json", "--root", ".", "--mode", "check").MustPass(t).MustSay(t, "0 new")
+
+	bin.Run(t, dir, "import", "spiky.json", "--root", ".", "--metrics-as-findings").MustPass(t).
+		MustSay(t, "dcm:metrics:cyclomatic-complexity")
+	bin.Run(t, dir, "import", "calm.json", "--root", ".", "--emit", "measures", "--ts", "yesterday").MustFail(t).
+		MustSay(t, "want YYYY-MM-DD")
+
+	cmdtest.WriteFile(t, dir, "s.sarif", `{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"otherlint"}},"results":[{"ruleId":"NULLREF","level":"error","message":{"text":"possible nil dereference"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/Handler.cs"},"region":{"startLine":42,"startColumn":9}}}]}]}]}`)
+	bin.Run(t, dir, "import", "s.sarif", "--root", ".", "--json").MustPass(t).MustSay(t, `"verdict": "wont-fix"`)
 }
 
 // exceptions is the "what have we agreed to live with" report. Its value is

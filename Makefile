@@ -1,7 +1,7 @@
 BIN  := bin
 CMDS := ratchet strata lens docket plumb judge
 
-.PHONY: all build test race cover check arch clean install
+.PHONY: all build test race cover check arch dart clean install
 
 all: build
 
@@ -30,12 +30,19 @@ cover:
 	@go test -count=1 -coverprofile=/tmp/assay-unit.out ./internal/... ./pkg/... >/dev/null
 	@go tool cover -func=/tmp/assay-unit.out | tail -1
 
+## dart: a real DCM report, checked in from a small synthetic package, must
+## import identically and hold its baseline. If DCM's format drifts, or the
+## importer's fingerprints move, this is where it shows.
+dart: build
+	@./$(BIN)/ratchet import internal/dcm/testdata/demo/report.json --root internal/dcm/testdata/demo \
+		--mode check --strict-caps
+
 ## arch: does this codebase obey the architecture it declares?
 arch: build
 	@./$(BIN)/plumb check .
 
 ## check: what CI runs, minus the build matrix
-check: build race arch
+check: build race arch dart
 	@gofmt -l . | grep -v testdata && { echo "not gofmt'd"; exit 1; } || true
 	go vet ./...
 	./$(BIN)/ratchet check .

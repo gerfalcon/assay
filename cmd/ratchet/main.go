@@ -8,9 +8,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/sherzing/assay/internal/analyze"
 	"github.com/sherzing/assay/internal/baseline"
+	"github.com/sherzing/assay/internal/dcm"
 	"github.com/sherzing/assay/internal/learn"
 	"github.com/sherzing/assay/internal/model"
 	"github.com/sherzing/assay/internal/report"
@@ -80,7 +83,7 @@ usage:
   ratchet baseline [flags] [path]   record current state as tolerated
   ratchet check    [flags] [path]   exit non-zero only on regression
   ratchet history  [flags] [path]   metric series over git history
-  ratchet import   [flags] <file>   ingest SARIF from any linter, then baseline/check
+  ratchet import   [flags] <file>   ingest SARIF from any linter or DCM JSON for Dart, then baseline/check
   ratchet exceptions [path]         everything currently tolerated, and why
   ratchet learn <repo>...           derive candidate rules from codebases you trust
   ratchet rules                     list rules
@@ -196,20 +199,8 @@ func cmdScan(args []string) error {
 		if name == "" {
 			name = filepath.Base(mustAbs(root))
 		}
-		orgName := verdict.ResolveOrg(*org, opt.Config.Org, gitEmail(root))
-		// Say so when the org was inferred rather than stated. Evidence gets
-		// tagged with this, and silently attributing someone's work to whatever
-		// happens to be in their global git config is a surprise nobody wants
-		// to discover after publishing.
-		if orgName != "" && *org == "" && opt.Config.Org == "" {
-			fmt.Fprintf(os.Stderr,
-				"note: attributing evidence to org %q, inferred from git email. "+
-					"Use --org or set org: in .quality.yaml to be explicit, or --org=- for none.\n", orgName)
-		}
-		if *org == "-" {
-			orgName = ""
-		}
-		if err := emitAssay(rep, *emit, name, gitCommit(root), orgName, !*noVerdicts); err != nil {
+		orgName := resolveOrg(*org, opt.Config.Org, root)
+		if err := emitAssay(rep, *emit, name, gitCommit(root), orgName, !*noVerdicts, time.Now().UTC()); err != nil {
 			return err
 		}
 	} else if err := emitReport(rep, c); err != nil {
@@ -229,14 +220,27 @@ func mustAbs(p string) string {
 	return a
 }
 
+// resolveOrg picks the organisation evidence is attributed to, and says so when inferred. "-" means none.
+func resolveOrg(flagVal, cfgOrg, root string) string {
+	if flagVal == "-" {
+		return ""
+	}
+	name := verdict.ResolveOrg(flagVal, cfgOrg, gitEmail(root))
+	if name != "" && flagVal == "" && cfgOrg == "" {
+		fmt.Fprintf(os.Stderr,
+			"note: attributing evidence to org %q, inferred from git email. "+
+				"Use --org or set org: in .quality.yaml to be explicit, or --org=- for none.\n", name)
+	}
+	return name
+}
+
 // emitAssay writes assay JSONL records so ratchet composes with strata.
 //
 // Split into per-kind helpers after assay flagged this at cognitive 28 — second
 // worst in its own codebase, and freshly written. Dogfooding works.
-func emitAssay(rep *model.Report, kind, repo, commit, org string, withVerdicts bool) error {
+func emitAssay(rep *model.Report, kind, repo, commit, org string, withVerdicts bool, now time.Time) error {
 	enc := schema.NewEncoder(os.Stdout)
 	defer enc.Flush()
-	now := time.Now().UTC()
 
 	switch kind {
 	case "measures":
@@ -734,114 +738,319 @@ func cmdRules() {
 	}
 }
 
-// cmdImport ingests SARIF so the ratchet works on languages ratchet cannot parse.
-//
-// The point is reuse, not coverage: golangci-lint, Roslyn analyzers, semgrep,
-// CodeQL and dart analyze all emit SARIF already. Consuming it is strictly
-// better than writing a Dart parser and a C# parser and owning both forever.
+// cmdImport ingests another tool's report: SARIF from any linter, or DCM's JSON for Dart.
+// The format is sniffed, so the command line is the same for every producer.
 func cmdImport(args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
-	root := fs.String("root", ".", "repository root, for making absolute SARIF paths relative")
-	tool := fs.String("tool", "", "override the tool name used to namespace rule IDs")
-	baselineFile := fs.String("file", defaultBaselineFile, "baseline path")
-	mode := fs.String("mode", "report", "report | baseline | check")
-	includeSuppressed := fs.Bool("include-suppressed", false, "import results the producer marked suppressed")
-	force := fs.Bool("force", false, "overwrite an existing baseline (mode=baseline)")
-	asJSON := fs.Bool("json", false, "emit JSON")
+	var o importOpts
+	fs.StringVar(&o.root, "root", ".", "repository root: report paths are relative to it, and source is read from under it")
+	fs.StringVar(&o.format, "format", "auto", "input format: auto|sarif|dcm")
+	fs.StringVar(&o.tool, "tool", "", "sarif: override the tool name used to namespace rule IDs")
+	fs.StringVar(&o.file, "file", defaultBaselineFile, "baseline path")
+	fs.StringVar(&o.mode, "mode", "report", "report | baseline | check")
+	fs.BoolVar(&o.includeSuppressed, "include-suppressed", false, "sarif: import results the producer marked suppressed")
+	fs.BoolVar(&o.force, "force", false, "overwrite an existing baseline (mode=baseline)")
+	fs.BoolVar(&o.asJSON, "json", false, "emit JSON")
+	fs.StringVar(&o.emit, "emit", "", "emit assay JSONL instead of a report: measures|findings")
+	fs.StringVar(&o.repo, "repo", "", "repo name to stamp on emitted records (default: the root directory name)")
+	fs.StringVar(&o.commit, "commit", "", "commit to stamp on emitted records (default: git HEAD under --root)")
+	fs.StringVar(&o.ts, "ts", "", "timestamp for emitted records, YYYY-MM-DD or RFC 3339 (default: now)")
+	fs.StringVar(&o.org, "org", "",
+		"organisation to attribute evidence to (else .quality.yaml org:, else inferred from git email; - for none)")
+	fs.BoolVar(&o.metricsAsFindings, "metrics-as-findings", false,
+		"dcm: also turn metric threshold breaches into findings, so the ratchet blocks new ones")
+	fs.BoolVar(&o.strictCaps, "strict-caps", false, "mode=check: also fail if peak complexity exceeds the baseline")
 	srcs := parseArgsMulti(fs, args)
 	if len(srcs) == 0 {
-		return fmt.Errorf("usage: ratchet import [flags] <file.sarif>...\n" +
-			"  several files are merged, which is what a multi-project build produces:\n" +
-			"    ratchet import artifacts/*.sarif --mode baseline\n" +
-			"  pipe with: golangci-lint run --out-format sarif | ratchet import -")
+		return fmt.Errorf("usage: ratchet import [flags] <file.sarif | dcm.json>...\n" +
+			"  several files are merged, which is what a multi-project build produces\n" +
+			"  pipe with: golangci-lint run --out-format sarif | ratchet import -\n" +
+			"  dart:      dcm run --analyze --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib\n" +
+			"             ratchet import dcm.json --root .")
 	}
 
-	// MERGE, do not take the first. A .NET solution writes one SARIF per
-	// project — a single shared ErrorLog path would have each project
-	// overwrite the last — so importing one file at a time is how you end up
-	// with a baseline covering a tenth of the codebase and a green check.
-	var (
-		findings []model.Finding
-		err      error
-	)
-	opt := sarif.Options{Root: *root, ToolPrefix: *tool, IncludeSuppressed: *includeSuppressed}
-	for _, src := range srcs {
-		var batch []model.Finding
-		if src == "-" {
-			batch, err = sarif.Import(os.Stdin, opt)
-		} else {
-			batch, err = sarif.ImportFile(src, opt)
-		}
-		if err != nil {
-			return fmt.Errorf("%s: %w", src, err)
-		}
-		findings = append(findings, batch...)
-	}
-	if len(srcs) > 1 {
-		fmt.Fprintf(os.Stderr, "merged %d SARIF files\n", len(srcs))
-	}
+	in, err := decodeImport(srcs, o)
 	if err != nil {
 		return err
 	}
-
-	rep := &model.Report{Root: *root, Findings: findings}
-	rep.Summarise(0) // file count is unknown from SARIF alone
-	rep.Commit = gitCommit(*root)
-
-	path := *baselineFile
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(*root, path)
+	if o.emit != "" {
+		return emitImported(in, o)
 	}
-
-	switch *mode {
+	switch o.mode {
 	case "report":
-		if *asJSON {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(rep)
-		}
-		fmt.Printf("imported %d findings\n", len(findings))
-		byRule := rep.Summary.FindingsByRule
-		keys := make([]string, 0, len(byRule))
-		for k := range byRule {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			fmt.Printf("  %-52s %d\n", k, byRule[k])
-		}
-		return nil
-
+		return importReport(in, o.asJSON)
 	case "baseline":
-		if _, err := os.Stat(path); err == nil && !*force {
-			return fmt.Errorf("baseline already exists at %s\n"+
-				"  regenerating it would silently forgive every current violation.\n"+
-				"  use --force to overwrite", path)
+		return importBaseline(in, o)
+	case "check":
+		return importCheck(in, o)
+	}
+	return fmt.Errorf("unknown mode %q (want report|baseline|check)", o.mode)
+}
+
+// importOpts are the import flags, so the steps below can be separate functions.
+type importOpts struct {
+	root, format, tool, file, mode   string
+	includeSuppressed, force, asJSON bool
+	emit, repo, commit, ts, org      string
+	metricsAsFindings, strictCaps    bool
+}
+
+// imported is a decoded report, whichever producer wrote it.
+type imported struct {
+	rep      *model.Report
+	measures []schema.Measure
+	dcm      *dcm.Result // nil unless the document was DCM
+	cfg      verdict.Config
+	files    int // known only when the producer counted them
+}
+
+// decodeImport reads every document and merges the results. Merge, do not take the first:
+// a .NET solution writes one SARIF per project, and a monorepo runs DCM per package.
+func decodeImport(srcs []string, o importOpts) (*imported, error) {
+	cfg, err := analyze.LoadConfig(o.root)
+	if err != nil {
+		return nil, err
+	}
+	in := &imported{rep: &model.Report{Root: o.root}, cfg: cfg}
+	var results []*dcm.Result
+	sarifs := 0
+	for _, src := range srcs {
+		findings, res, err := decodeOne(src, o, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", src, err)
 		}
-		b := baseline.From(rep, rep.Commit)
-		if err := b.Save(path); err != nil {
+		if res != nil {
+			results = append(results, res)
+			continue
+		}
+		in.rep.Findings = append(in.rep.Findings, findings...)
+		sarifs++
+	}
+	in.addDCM(results)
+	if len(srcs) > 1 {
+		fmt.Fprintf(os.Stderr, "merged %d %s\n", len(srcs), noun(sarifs, len(srcs)))
+	}
+	in.rep.Summarise(in.files)
+	in.rep.Commit = o.commit
+	if in.rep.Commit == "" {
+		in.rep.Commit = gitCommit(o.root)
+	}
+	return in, nil
+}
+
+// decodeOne sniffs one document. DCM results are returned whole; SARIF yields findings only.
+func decodeOne(src string, o importOpts, cfg verdict.Config) ([]model.Finding, *dcm.Result, error) {
+	data, err := readInput(src)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch pickFormat(o.format, data) {
+	case "dcm":
+		res, err := decodeDCM(data, o, cfg)
+		return nil, res, err
+	case "sarif":
+		findings, err := decodeSARIF(data, o, cfg)
+		return findings, nil, err
+	}
+	return nil, nil, fmt.Errorf("unknown --format %q (want auto|sarif|dcm)", o.format)
+}
+
+// addDCM merges the DCM results into the report.
+func (in *imported) addDCM(rs []*dcm.Result) {
+	if len(rs) == 0 {
+		return
+	}
+	res := dcm.Merge(rs...)
+	in.rep.Findings = append(in.rep.Findings, res.Findings...)
+	in.rep.Funcs = res.Functions
+	in.measures, in.dcm, in.files = res.Measures, res, res.Files
+}
+
+// noun says what was merged, in the words the SARIF path always used.
+func noun(sarifs, total int) string {
+	if sarifs == total {
+		return "SARIF files"
+	}
+	return "reports"
+}
+
+func decodeDCM(data []byte, o importOpts, cfg verdict.Config) (*dcm.Result, error) {
+	res, err := dcm.Import(bytes.NewReader(data),
+		dcm.Options{Root: o.root, Config: cfg, MetricsAsFindings: o.metricsAsFindings})
+	if err != nil {
+		return nil, err
+	}
+	if res.FormatVersion != dcm.Version {
+		fmt.Fprintf(os.Stderr, "note: DCM report is formatVersion %d; this importer was verified against %d\n",
+			res.FormatVersion, dcm.Version)
+	}
+	return res, nil
+}
+
+func decodeSARIF(data []byte, o importOpts, cfg verdict.Config) ([]model.Finding, error) {
+	findings, err := sarif.Import(bytes.NewReader(data),
+		sarif.Options{Root: o.root, ToolPrefix: o.tool, IncludeSuppressed: o.includeSuppressed})
+	if err != nil {
+		return nil, err
+	}
+	applyConfigVerdicts(findings, cfg)
+	return findings, nil
+}
+
+// importReport prints findings by rule and, for DCM, how much was measured.
+func importReport(in *imported, asJSON bool) error {
+	if asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(in.rep)
+	}
+	fmt.Printf("imported %d findings\n", len(in.rep.Findings))
+	for _, k := range sortedCountKeys(in.rep.Summary.FindingsByRule) {
+		fmt.Printf("  %-52s %d\n", k, in.rep.Summary.FindingsByRule[k])
+	}
+	if in.dcm != nil {
+		fmt.Printf("measured %d declarations in %d files, %d measures\n",
+			in.dcm.Funcs, in.dcm.Files, len(in.measures))
+	}
+	return nil
+}
+
+func baselinePath(o importOpts) string {
+	if filepath.IsAbs(o.file) {
+		return o.file
+	}
+	return filepath.Join(o.root, o.file)
+}
+
+func importBaseline(in *imported, o importOpts) error {
+	path := baselinePath(o)
+	if _, err := os.Stat(path); err == nil && !o.force {
+		return fmt.Errorf("baseline already exists at %s\n"+
+			"  regenerating it would silently forgive every current violation.\n"+
+			"  use --force to overwrite", path)
+	}
+	b := baseline.From(in.rep, in.rep.Commit)
+	if err := b.Save(path); err != nil {
+		return err
+	}
+	fmt.Printf("wrote %s with %d tolerated findings\n", path, len(b.Tolerated))
+	return nil
+}
+
+func importCheck(in *imported, o importOpts) error {
+	b, err := baseline.Load(baselinePath(o))
+	if err != nil {
+		return fmt.Errorf("%w\n  run `ratchet import --mode baseline` first", err)
+	}
+	res := b.Check(in.rep, o.strictCaps)
+	fmt.Printf("%d tolerated, %d new, %d fixed\n", res.Existing, len(res.New), len(res.Fixed))
+	if len(res.New) > 0 {
+		fmt.Printf("\nNEW findings (these fail the build):\n")
+		report.Findings(os.Stdout, res.New)
+	}
+	for _, cb := range res.CapBreak {
+		fmt.Printf("\ncap breach: %s\n", cb)
+	}
+	if res.Regressed() {
+		os.Exit(1)
+	}
+	return nil
+}
+
+// readInput reads the whole report so the format can be sniffed first.
+func readInput(src string) ([]byte, error) {
+	if src == "-" {
+		return io.ReadAll(os.Stdin)
+	}
+	return os.ReadFile(src)
+}
+
+// pickFormat honours an explicit --format and otherwise sniffs the document.
+func pickFormat(flagVal string, data []byte) string {
+	if flagVal != "auto" {
+		return flagVal
+	}
+	if dcm.Sniff(data) {
+		return "dcm"
+	}
+	return "sarif"
+}
+
+// applyConfigVerdicts gives imported findings the .quality.yaml treatment the native scan gets.
+func applyConfigVerdicts(findings []model.Finding, cfg verdict.Config) {
+	for i := range findings {
+		f := &findings[i]
+		if f.Verdict != "" {
+			continue
+		}
+		v, ok := cfg.Match(f.Rule, f.File)
+		if !ok {
+			continue
+		}
+		f.Verdict, f.VerdictWhy, f.VerdictFrom = string(v.Verdict), v.Reason, v.Source
+		if !v.Until.IsZero() {
+			f.VerdictUntil = v.Until.Format("2006-01-02")
+		}
+	}
+}
+
+// emitImported writes an imported report as assay records.
+func emitImported(in *imported, o importOpts) error {
+	name := o.repo
+	if name == "" {
+		name = filepath.Base(mustAbs(o.root))
+	}
+	when, err := stampTime(o.ts)
+	if err != nil {
+		return err
+	}
+	switch o.emit {
+	case "findings":
+		return emitAssay(in.rep, "findings", name, in.rep.Commit, resolveOrg(o.org, in.cfg.Org, o.root), true, when)
+	case "measures":
+		return emitMeasureRecords(in, name, when)
+	}
+	return fmt.Errorf("unknown --emit %q (want measures|findings)", o.emit)
+}
+
+// emitMeasureRecords writes the producer's measures, then the findings counts computed here.
+func emitMeasureRecords(in *imported, repo string, when time.Time) error {
+	enc := schema.NewEncoder(os.Stdout)
+	defer enc.Flush()
+	for _, m := range in.measures {
+		m.Repo, m.Commit, m.TS = repo, in.rep.Commit, when
+		if err := enc.Write(&m); err != nil {
 			return err
 		}
-		fmt.Printf("wrote %s with %d tolerated findings\n", path, len(b.Tolerated))
-		return nil
-
-	case "check":
-		b, err := baseline.Load(path)
-		if err != nil {
-			return fmt.Errorf("%w\n  run `ratchet import --mode baseline` first", err)
-		}
-		res := b.Check(rep, false)
-		fmt.Printf("%d tolerated, %d new, %d fixed\n", res.Existing, len(res.New), len(res.Fixed))
-		if len(res.New) > 0 {
-			fmt.Printf("\nNEW findings (these fail the build):\n")
-			report.Findings(os.Stdout, res.New)
-		}
-		if res.Regressed() {
-			os.Exit(1)
-		}
-		return nil
 	}
-	return fmt.Errorf("unknown mode %q (want report|baseline|check)", *mode)
+	put := func(metric string, v float64) error {
+		return enc.Write(&schema.Measure{Repo: repo, Commit: in.rep.Commit, TS: when,
+			Scope: schema.ScopeProject, Metric: metric, Value: v})
+	}
+	if err := put("findings.total", float64(in.rep.Summary.FindingsTotal)); err != nil {
+		return err
+	}
+	for _, rule := range sortedCountKeys(in.rep.Summary.FindingsByRule) {
+		if err := put("findings.rule."+rule, float64(in.rep.Summary.FindingsByRule[rule])); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stampTime parses --ts: empty is now, a bare date is midnight UTC, so a backfill lands on its day.
+func stampTime(s string) (time.Time, error) {
+	if s == "" {
+		return time.Now().UTC(), nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC(), nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("--ts %q: want YYYY-MM-DD or RFC 3339", s)
+	}
+	return t.UTC(), nil
 }
 
 // cmdExceptions lists everything currently tolerated.

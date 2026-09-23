@@ -1,0 +1,6 @@
+org: demo
+verdicts:
+  - rule: dcm:no-magic-number
+    path: "lib/pricing.dart"
+    verdict: wont-fix
+    reason: the tax table is data, not magic
