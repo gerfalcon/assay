@@ -82,7 +82,7 @@ group verdicts    internal/verdict
 group history     internal/store internal/evidence
 group gate        internal/baseline
 group tickets     internal/docket
-group import      internal/sarif
+group import      internal/sarif internal/dcm
 group presenting  internal/report
 
 # The schema depends on nothing.
@@ -158,3 +158,7 @@ The tools-do-not-import-each-other rule is not expressible here: `plumb`
 covers package dependencies, and `cmd/*` are separate mains that the import
 graph already keeps apart. It is checked by the fact that each binary builds
 alone. If that ever stops being true, add a group per command.
+
+**2026-11-16.** `internal/dcm` joins `import` beside `internal/sarif`: a second
+importer, for DCM's JSON on Dart and Flutter code. Widening a group is a
+tightening, so this needed no second reviewer.
