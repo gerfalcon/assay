@@ -105,8 +105,12 @@ golangci-lint run --out-format sarif | ratchet import - --mode check
 dotnet build --no-incremental -p:AnalysisMode=All
 ratchet import artifacts/*.sarif --root . --mode baseline
 
-# Dart
+# Dart — dart_code_linter (open source): its JSON needs a small shim to SARIF
 dart_code_linter analyze lib --reporter=json | your-shim | ratchet import -
+
+# Dart / Flutter — DCM (commercial): ratchet reads its metrics directly
+dcm run --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --emit measures --repo myapp | strata append
 
 # Anything semgrep covers
 semgrep --config rules/ --sarif | ratchet import - --mode check
@@ -401,6 +405,7 @@ same module — those are cohesion, not shotgun surgery.
 | many | `lizard` | MIT |
 | Python | `wily` (per-commit history built in) | Apache-2.0 |
 | Dart | `dart_code_linter` | MIT |
+| Dart / Flutter | DCM, read natively by `ratchet import` | commercial, free tier |
 | C# | Roslyn analyzers via `ErrorLog=*.sarif%2cversion=2.1` | MIT |
 
 ### Duplication
@@ -603,7 +608,7 @@ golangci-lint run --out-format sarif | ratchet import - --mode check
 
 Use alongside `ratchet scan`, not instead of it — different rules, no overlap.
 
-### Dart
+### Dart — dart_code_linter
 
 ```yaml
 dev_dependencies:
@@ -616,6 +621,61 @@ dart run dart_code_linter:metrics analyze lib --reporter=json > dcl.json
 
 No SARIF reporter, so you own a small converter (~40 lines mapping
 `records[].issues[]` to SARIF `results[]`). Add `lakos` for cycle detection.
+
+### Dart and Flutter — DCM
+
+[DCM](https://dcm.dev) is the commercial successor of the tool above, and its
+metrics are the reason to run it: cyclomatic complexity, nesting, widget nesting
+and widgets per build method, class cohesion and coupling. It has no SARIF
+reporter, and SARIF would drop the metrics anyway, so `ratchet import` reads
+DCM's own JSON. The format is sniffed from the document; `--format dcm` forces
+it.
+
+```sh
+flutter pub get   # DCM does not resolve dependencies itself
+dcm run --metrics --report-all --no-fatal-found --reporter=json --output-to=dcm.json lib
+ratchet import dcm.json --emit measures --repo myapp | strata append
+lens top --store .assay --metric cyclomatic --n 10
+lens calibrate --store .assay --lang dart      # bands from your own corpus
+```
+
+`--report-all` makes DCM report every metric value rather than only threshold
+breaches; without it the distributions are meaningless. `--no-fatal-found`
+stops DCM failing the build by itself. DCM analyses only what
+`analysis_options.yaml` configures: with no `dcm:` block, `metricResults` is
+silently empty. Let DCM write the block from what it sees in your code:
+
+```sh
+dcm init metrics-preview --format=analysis_options lib   # every metric, with thresholds
+```
+
+**What each DCM plan gives you.** DCM is commercial, and the plan decides
+which `dcm run` flags produce anything. The importer does not care: a section
+your plan does not emit simply imports nothing. As of late 2026, per
+[dcm.dev/pricing](https://dcm.dev/pricing/):
+
+| plan | what it adds for this pipeline |
+|---|---|
+| Free — one seat, no account or card | `--metrics` with 22 metrics, capped at 50k analysed lines; `--analyze` with a fixed set of ~100 rules; `--unused-files`. No rule configuration, no presets, no CI key. |
+| Pro — per seat | the full rule set with configuration and presets, `--unused-code`, `--code-duplication`, widgets and assets analysis |
+| Teams and up | unlimited lines, dashboards, and the `--ci-key` that running in CI requires |
+
+Two operational details that cost us an afternoon: the Free plan still needs
+`dcm activate --license-key=…`, and an expired paid licence left on a machine
+blocks every command, free ones included, until another key is activated.
+
+Measures use the Go scan's names, `cyclomatic`, `nesting`, `params`, `sloc`,
+plus DCM's own such as `widgets.nesting` and `cohesion`, at function, file and
+`class` scope, with project roll-ups like `cyclomatic.p90`, so one `lens trend`
+query serves a Dart repo and a Go repo alike. The metrics also fill the
+per-function records, so `ratchet import dcm.json --json` reads like a native
+scan and `--mode check --strict-caps` holds peak cyclomatic complexity and
+nesting. Cognitive complexity stays 0: DCM has no such metric. Several reports,
+such as one per package of a monorepo, merge into one import.
+
+Backfilling history costs a `pub get` per sampled commit: sample monthly, and
+pass `--ts` and `--commit` so each sample lands on its own day in the store.
+`lakos` still covers cycle detection.
 
 ### Anything else
 
