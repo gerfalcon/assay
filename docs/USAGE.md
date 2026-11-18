@@ -420,7 +420,7 @@ same module — those are cohesion, not shotgun surgery.
 
 ### Dependency conformance
 
-Declare your layering once, enforce it forever:
+Declare your dependency rules once, enforce them forever:
 
 | language | tool |
 |---|---|
@@ -431,7 +431,7 @@ Declare your layering once, enforce it forever:
 | Dart | `import_rules` + `lakos` |
 
 > Go forbids import cycles at the compiler, so a "no cycles" rule there is
-> vacuous. Use a declared layering rule instead.
+> vacuous. Use a declared dependency rule instead.
 
 ### Charts
 
